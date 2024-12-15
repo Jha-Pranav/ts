@@ -16,9 +16,13 @@ neuralforecast = "^1.7.6"
 hierarchicalforecast = "^0.4.3"
 utilsforecast = "^0.2.10"
 datasetsforecast = "^1.0.0"
-ipykernel = "^6.29.5"
+python-dotenv = "^1.0.1"
 jupyter = "^1.1.1"
+seaborn = "^0.13.2"
 
+
+[tool.poetry.group.dev.dependencies]
+python-dotenv = "^1.0.1"
 
 [build-system]
 requires = ["poetry-core"]
