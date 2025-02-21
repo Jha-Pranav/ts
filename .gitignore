@@ -10,3 +10,7 @@ wheels/
 
 # Virtual environments
 .venv
+
+# tensorboard related files
+hparams.yaml
+events.out.tfevents.*
