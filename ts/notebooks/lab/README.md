@@ -1,15 +1,13 @@
-<script type="text/javascript" async
-  src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
-</script>
+
 # **Baseline Models - Classical Models for Establishing a Baseline**  
 
 ## **1. Historic Average (Mean Method)**  
 The **Historic Average (HA)** model predicts future values by computing the **average of all past observations**.  
 
 ### **Formula Breakdown**  
-$$
+`
 \hat{y}_{t+1} = \frac{1}{t} \sum_{j=1}^{t} y_j
-$$
+`
 where:  
 - \( \hat{y}_{t+1} \) is the forecasted value.  
 - \( y_j \) are the historical values.  
