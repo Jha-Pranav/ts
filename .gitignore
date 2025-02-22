@@ -14,3 +14,8 @@ wheels/
 # tensorboard related files
 hparams.yaml
 events.out.tfevents.*
+
+*.zip
+*.csv
+.ipynb_checkpoints
+*.p

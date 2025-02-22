@@ -5,9 +5,8 @@
 The **Historic Average (HA)** model predicts future values by computing the **average of all past observations**.  
 
 ### **Formula Breakdown**  
-$$
-\hat{y}_{t+1} = \frac{1}{t} \sum_{j=1}^{t} y_j
-$$
+
+$$ \hat{y}_{t+1} = \frac{1}{t} \sum_{j=1}^{t} y_j $$
 where:  
 - \( \hat{y}_{t+1} \) is the forecasted value.  
 - \( y_j \) are the historical values.  
