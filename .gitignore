@@ -19,3 +19,5 @@ events.out.tfevents.*
 *.csv
 .ipynb_checkpoints
 *.p
+*.parquet
+*.ckpt
