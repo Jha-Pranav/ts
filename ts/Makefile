@@ -64,4 +64,3 @@ help:
 	@echo "  make type-check  - Run static type checking with mypy"
 	@echo "  make clean       - Remove cache, logs, and virtual environment"
 	@echo "  make run         - Run the main application"
-

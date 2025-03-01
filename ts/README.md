@@ -1,12 +1,14 @@
 # temporal
 
- [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
- <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+<a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 
 ## Requirements
+
 - Python 3.13+
 
 ## Project Organization
+
 ```
 ├── LICENSE
 ├── Makefile           <- Makefile with commands like `make init` or `make lint-requirements`
@@ -37,6 +39,7 @@
 ```
 
 ## Code formatting
+
 To automatically format your code, make sure you have `black` installed (`pip install black`) and call
-```black . ``` 
+`black . `
 from within the project directory.

@@ -1,8 +1,9 @@
 # Source code folder
 
-All re-usable source code for the project goes here. 
+All re-usable source code for the project goes here.
 
 The source folder is structured as follows:
+
 ```
 src
 ├── __init__.py    <- Makes src a Python module

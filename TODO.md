@@ -1,93 +1,100 @@
-
-
-### 📌 **TODO: Implement & Compare Time Series Forecasting Models**  
+### 📌 **TODO: Implement & Compare Time Series Forecasting Models**
 
 #### ✅ **Tasks:**
-- [ ] Implement each model  
-- [ ] Benchmark accuracy & efficiency  
-- [ ] Compare performance across different datasets  
-- [ ] Add visualization for results  
-- [ ] Document findings  
 
----
+- [ ] Implement each model
+- [ ] Benchmark accuracy & efficiency
+- [ ] Compare performance across different datasets
+- [ ] Add visualization for results
+- [ ] Document findings
 
-### 🔹 **1️⃣ MLP-Based (Simplest)**  
-- [ ] MLP  
-- [ ] DLinear  
-- [ ] NLinear  
-- [ ] TiDE  
-- [ ] DeepNPTS  
-- [ ] NBEATS  
-- [ ] NBEATSX  
-- [ ] NHITS  
+______________________________________________________________________
 
----
+### 🔹 **1️⃣ MLP-Based (Simplest)**
 
-### 🔹 **2️⃣ KNN-Based**  
-- [ ] KAN  
+- [ ] MLP
+- [ ] DLinear
+- [ ] NLinear
+- [ ] TiDE
+- [ ] DeepNPTS
+- [ ] NBEATS
+- [ ] NBEATSX
+- [ ] NHITS
 
----
+______________________________________________________________________
 
-### 🔹 **3️⃣ RNN-Based (Sequential Processing)**  
-- [ ] RNN  
-- [ ] GRU  
-- [ ] LSTM  
-- [ ] DilatedRNN  
-- [ ] TCN  
-- [ ] BiTCN  
-- [ ] DeepAR  
+### 🔹 **2️⃣ KNN-Based**
 
----
+- [ ] KAN
 
-### 🔹 **4️⃣ CNN-Based**  
-- [ ] TimesNet  
+______________________________________________________________________
 
----
+### 🔹 **3️⃣ RNN-Based (Sequential Processing)**
 
-### 🔹 **5️⃣ Transformer-Based (More Complex, Attention-Based)**  
-- [ ] VanillaTransformer  
-- [ ] TFT  
-- [ ] Informer  
-- [ ] Autoformer  
-- [ ] FEDformer  
-- [ ] PatchTST  
-- [ ] iTransformer  
-- [ ] TimeXer  
+- [ ] RNN
+- [ ] GRU
+- [ ] LSTM
+- [ ] DilatedRNN
+- [ ] TCN
+- [ ] BiTCN
+- [ ] DeepAR
 
----
+______________________________________________________________________
 
-### 🔹 **6️⃣ Multivariate-Specific (Handling Multi-Series Relationships)**  
-- [ ] MLPMultivariate  
-- [ ] TSMixer  
-- [ ] TSMixerx  
-- [ ] TimeMixer  
-- [ ] StemGNN  
-- [ ] HINT  
-- [ ] SOFTS  
-- [ ] RMoK  
+### 🔹 **4️⃣ CNN-Based**
 
----
+- [ ] TimesNet
 
-### 🔹 **7️⃣ Prophet-Based**  
-- [ ] NeuralProphet  
+______________________________________________________________________
 
----
+### 🔹 **5️⃣ Transformer-Based (More Complex, Attention-Based)**
 
-### 🔹 **8️⃣ StatsForecast (Classical & Hybrid Approaches)**  
-- [ ] AutoARIMA  
-- [ ] AutoETS  
-- [ ] AutoTheta  
-- [ ] AutoCES  
-- [ ] MSTL  
-- [ ] Croston  
-- [ ] IMAPA  
+- [ ] VanillaTransformer
+- [ ] TFT
+- [ ] Informer
+- [ ] Autoformer
+- [ ] FEDformer
+- [ ] PatchTST
+- [ ] iTransformer
+- [ ] TimeXer
 
----
+______________________________________________________________________
 
-### 🔹 **9️⃣ Hierarchical Forecasting (Aggregated & Disaggregated Time Series)**  
-- [ ] MinTrace  
-- [ ] Bottom-Up  
-- [ ] Top-Down  
-- [ ] Middle-Out  
-- [ ] Optimal Reconciliation  
+### 🔹 **6️⃣ Multivariate-Specific (Handling Multi-Series Relationships)**
 
+- [ ] MLPMultivariate
+- [ ] TSMixer
+- [ ] TSMixerx
+- [ ] TimeMixer
+- [ ] StemGNN
+- [ ] HINT
+- [ ] SOFTS
+- [ ] RMoK
+
+______________________________________________________________________
+
+### 🔹 **7️⃣ Prophet-Based**
+
+- [ ] NeuralProphet
+
+______________________________________________________________________
+
+### 🔹 **8️⃣ StatsForecast (Classical & Hybrid Approaches)**
+
+- [ ] AutoARIMA
+- [ ] AutoETS
+- [ ] AutoTheta
+- [ ] AutoCES
+- [ ] MSTL
+- [ ] Croston
+- [ ] IMAPA
+
+______________________________________________________________________
+
+### 🔹 **9️⃣ Hierarchical Forecasting (Aggregated & Disaggregated Time Series)**
+
+- [ ] MinTrace
+- [ ] Bottom-Up
+- [ ] Top-Down
+- [ ] Middle-Out
+- [ ] Optimal Reconciliation
