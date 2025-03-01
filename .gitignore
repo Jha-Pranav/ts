@@ -9,6 +9,8 @@ wheels/
 *.xls
 node_modules/
 data/
+_proc
+
 # Virtual environments
 .venv
 

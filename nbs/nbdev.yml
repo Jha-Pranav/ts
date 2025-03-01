@@ -1,0 +1,9 @@
+project:
+  output-dir: _docs
+
+website:
+  title: "ts"
+  site-url: "https://Jha-Pranav.github.io/ts"
+  description: "The ts repository is a space for experimenting with and learning time series analysis, forecasting, and modeling techniques."
+  repo-branch: master
+  repo-url: "https://github.com/Jha-Pranav/ts"

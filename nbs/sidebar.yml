@@ -1,0 +1,8 @@
+website:
+  sidebar:
+    contents:
+      - section: src
+        contents:
+          - src/model.baseline.ipynb
+          - src/model.dlinear.ipynb
+          - src/model.mlp.ipynb
