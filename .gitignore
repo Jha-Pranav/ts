@@ -8,8 +8,7 @@ wheels/
 *.pdf
 *.xls
 node_modules/
-
-
+data/
 # Virtual environments
 .venv
 

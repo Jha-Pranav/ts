@@ -1,0 +1,204 @@
+import numpy as np
+import pandas as pd
+import plotly.graph_objects as go
+import torch
+from plotly.subplots import make_subplots
+
+
+def mlp_ims(df, model, in_features, out_features, window):
+    """
+    Plots actual vs predicted time series data for 6 random unique IDs.
+
+    :param df: DataFrame containing time series data with 'unique_id', 'ds', and 'y' columns
+    :param model: Trained PyTorch model for forecasting
+    :param in_features: Number of input features for the model
+    :param out_features: Number of output predictions per step
+    :param window: Step size for iterative prediction
+    """
+    # Select 6 random unique_ids
+    unique_ids = df["unique_id"].unique()
+    selected_ids = np.random.choice(unique_ids, 6, replace=False)
+
+    # Create 3x2 subplot layout
+    fig = make_subplots(rows=3, cols=2, subplot_titles=[f"ID: {uid}" for uid in selected_ids])
+
+    # Set model to evaluation mode
+    model.eval()
+
+    for i, uid in enumerate(selected_ids):
+        row, col = divmod(i, 2)  # Convert index to subplot grid position (row, col)
+
+        # Filter DataFrame for the specific unique_id
+        subset_df = df[df["unique_id"] == uid].copy()
+        x_values = subset_df["ds"].values  # Dates
+        x = subset_df["y"].values  # Target values
+
+        # Initialize prediction tensor
+        y_pred = torch.zeros(len(x))
+        y_pred[:in_features] = torch.tensor(x[:in_features].tolist())
+
+        # Perform iterative predictions
+        for idx in range(0, len(x) - in_features, window):
+            x_input = torch.tensor(x[idx : idx + in_features], dtype=torch.float32).unsqueeze(
+                0
+            )  # Add batch dimension
+            y_out = model(x_input).squeeze().detach()  # Run model & remove unnecessary dimensions
+
+            # Ensure output fits within bounds
+            end_idx = min(idx + in_features + out_features, len(y_pred))
+            y_pred[idx + in_features : end_idx] = y_out[
+                : end_idx - (idx + in_features)
+            ]  # Assign predictions carefully
+
+        # Convert predictions to NumPy
+        y_pred = y_pred.numpy()
+
+        # Add traces to subplot
+        fig.add_trace(
+            go.Scatter(x=x_values, y=x, mode="lines", name=f"Actual {uid}"),
+            row=row + 1,
+            col=col + 1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_values, y=y_pred, mode="lines", name=f"Predicted {uid}", line=dict(dash="dot")
+            ),
+            row=row + 1,
+            col=col + 1,
+        )
+
+    # Update layout
+    fig.update_layout(
+        title="MLP Time Series Forecasting - Predictions vs Actuals",
+        xaxis_title="Date",
+        yaxis_title="Value",
+        template="plotly_white",
+        height=900,
+        width=1200,
+        showlegend=False,
+    )
+
+    fig.show()
+
+
+def mlp_dms(df, model, in_features, out_features, window):
+    """
+    Generates a 3x2 grid of subplots showing actual vs. predicted values
+    for 6 randomly selected unique IDs.
+
+    :param df: DataFrame containing 'unique_id', 'ds' (date), and 'y' (target variable).
+    :param model: Trained PyTorch model.
+    :param in_features: Number of input features.
+    :param out_features: Number of output features.
+    :param window: Step size for iterative predictions.
+    """
+    unique_ids = df["unique_id"].unique()
+    selected_ids = np.random.choice(unique_ids, 6, replace=False)
+
+    # Create a 3x2 subplot layout
+    fig = make_subplots(rows=3, cols=2, subplot_titles=[f"ID: {uid}" for uid in selected_ids])
+
+    model.eval()
+
+    for i, uid in enumerate(selected_ids):
+        row, col = divmod(i, 2)  # Convert index to (row, col) format
+
+        # Filter DataFrame for specific unique_id
+        subset_df = df[df["unique_id"] == uid].copy()
+        x_values = subset_df["ds"].values  # Dates
+        x = subset_df["y"].values  # Target values
+
+        # Initialize prediction tensor
+        y_pred = torch.zeros(len(x))
+        y_pred[:in_features] = torch.tensor(x[:in_features].tolist())
+
+        # Perform iterative forecasting
+        for idx in range(0, len(x) - in_features, window):
+            x_input = (
+                y_pred[idx : idx + in_features].clone().detach().unsqueeze(0).to(torch.float32)
+            )
+            y_out = model(x_input).squeeze().detach()
+
+            # Ensure output fits within bounds
+            end_idx = min(idx + in_features + out_features, len(y_pred))
+            y_pred[idx + in_features : end_idx] = y_out[: end_idx - (idx + in_features)]
+
+        # Convert predictions to NumPy
+        y_pred = y_pred.numpy()
+
+        # Add actual and predicted traces to subplot
+        fig.add_trace(
+            go.Scatter(x=x_values, y=x, mode="lines", name=f"Actual {uid}"),
+            row=row + 1,
+            col=col + 1,
+        )
+        fig.add_trace(
+            go.Scatter(
+                x=x_values, y=y_pred, mode="lines", name=f"Predicted {uid}", line=dict(dash="dot")
+            ),
+            row=row + 1,
+            col=col + 1,
+        )
+
+    # Update layout
+    fig.update_layout(
+        title="MLP Time Series Forecasting - Predictions vs Forecasted",
+        template="plotly_white",
+        height=900,
+        width=1200,
+        showlegend=False,
+    )
+
+    fig.show()
+
+
+# Usage:
+# plot_multiple_time_series(df, model, in_features, out_features, window)
+
+
+def mlp_dms_singular(df, model, in_features, out_features, window):
+    """
+    Generates a forecast plot comparing actual vs. predicted values.
+
+    :param df: DataFrame containing 'ds' (date) and 'y' (target variable).
+    :param model: Trained PyTorch model.
+    :param in_features: Number of input features.
+    :param out_features: Number of output features.
+    :param window: Step size for iterative predictions.
+    """
+    x = df.y.values  # Extract target values
+    model.eval()
+
+    # Initialize tensor for predictions
+    y_pred = torch.zeros(len(x))
+
+    # Perform iterative predictions
+    for idx in range(0, len(x) - in_features, window):
+        x_input = torch.tensor(x[idx : idx + in_features], dtype=torch.float32).unsqueeze(0)
+        y_out = model(x_input).squeeze().detach()
+
+        # Ensure output fits within bounds
+        end_idx = min(idx + in_features + out_features, len(y_pred))
+        y_pred[idx + in_features : end_idx] = y_out[: end_idx - (idx + in_features)]
+
+    # Convert predictions to NumPy for Plotly
+    x_values = df.ds.values  # Assuming 'ds' is the date column
+    y_actual = x  # Original values
+    y_pred = y_pred.numpy()
+
+    # Create the plot
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(x=x_values, y=y_actual, mode="lines", name="Actual"))
+    fig.add_trace(
+        go.Scatter(x=x_values, y=y_pred, mode="lines", name="Predicted", line=dict(dash="dot"))
+    )
+
+    # Update layout
+    fig.update_layout(
+        title="MLP Time Series Forecasting",
+        xaxis_title="Date",
+        yaxis_title="Value",
+        template="plotly_white",
+    )
+
+    fig.show()

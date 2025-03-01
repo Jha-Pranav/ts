@@ -28,6 +28,8 @@ tsfresh = "^0.21.0"
 [tool.poetry.group.dev.dependencies]
 python-dotenv = "^1.0.1"
 pre-commit = "^4.1.0"
+fastcore = "^1.7.29"
+nbdev = "^2.3.34"
 
 [build-system]
 requires = ["poetry-core"]
