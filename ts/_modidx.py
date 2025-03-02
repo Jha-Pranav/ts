@@ -9,28 +9,6 @@ d = {
         "lib_path": "ts",
     },
     "syms": {
-        "ts.benchmark.dataset": {
-            "ts.benchmark.dataset.TimeSeriesBenchmarkDataset": (
-                "src/utils.benchmark.html#timeseriesbenchmarkdataset",
-                "ts/benchmark/dataset.py",
-            ),
-            "ts.benchmark.dataset.TimeSeriesBenchmarkDataset.__init__": (
-                "src/utils.benchmark.html#timeseriesbenchmarkdataset.__init__",
-                "ts/benchmark/dataset.py",
-            ),
-            "ts.benchmark.dataset.TimeSeriesBenchmarkDataset.get_datasets": (
-                "src/utils.benchmark.html#timeseriesbenchmarkdataset.get_datasets",
-                "ts/benchmark/dataset.py",
-            ),
-            "ts.benchmark.dataset.TimeSeriesBenchmarkDataset.load_dataset": (
-                "src/utils.benchmark.html#timeseriesbenchmarkdataset.load_dataset",
-                "ts/benchmark/dataset.py",
-            ),
-            "ts.benchmark.dataset.TimeSeriesBenchmarkDataset.to_long_format": (
-                "src/utils.benchmark.html#timeseriesbenchmarkdataset.to_long_format",
-                "ts/benchmark/dataset.py",
-            ),
-        },
         "ts.benchmark.tsdataset": {
             "ts.benchmark.tsdataset.TimeSeriesBenchmarkDataset": (
                 "src/utils.benchmark.html#timeseriesbenchmarkdataset",
@@ -120,11 +98,49 @@ d = {
                 "ts/models/ltsf.py",
             ),
         },
+        "ts.preprocess.dataloader": {
+            "ts.preprocess.dataloader.TSDataLoader": (
+                "src/preprocess.dataloader.html#tsdataloader",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSDataLoader.__init__": (
+                "src/preprocess.dataloader.html#tsdataloader.__init__",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSDataLoader.setup": (
+                "src/preprocess.dataloader.html#tsdataloader.setup",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSDataLoader.test_dataloader": (
+                "src/preprocess.dataloader.html#tsdataloader.test_dataloader",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSDataLoader.train_dataloader": (
+                "src/preprocess.dataloader.html#tsdataloader.train_dataloader",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSDataLoader.val_dataloader": (
+                "src/preprocess.dataloader.html#tsdataloader.val_dataloader",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSRegressionDataset": (
+                "src/preprocess.dataloader.html#tsregressiondataset",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSRegressionDataset.__getitem__": (
+                "src/preprocess.dataloader.html#tsregressiondataset.__getitem__",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSRegressionDataset.__init__": (
+                "src/preprocess.dataloader.html#tsregressiondataset.__init__",
+                "ts/preprocess/dataloader.py",
+            ),
+            "ts.preprocess.dataloader.TSRegressionDataset.__len__": (
+                "src/preprocess.dataloader.html#tsregressiondataset.__len__",
+                "ts/preprocess/dataloader.py",
+            ),
+        },
         "ts.setup": {},
-        "ts.tests.test_all": {},
-        "ts.tests.test_data": {},
-        "ts.tests.test_models": {},
-        "ts.tests.test_preprocessing": {},
         "ts.utils.plot_forecast": {
             "ts.utils.plot_forecast.mlp_dms": (
                 "src/utils.plot.html#mlp_dms",

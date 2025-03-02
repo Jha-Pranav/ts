@@ -7,7 +7,6 @@ __all__ = ["device", "TSRegressionDataset", "TSDataLoader", "LTSF"]
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-from neuralforecast.utils import AirPassengersDF as df
 from torch.optim import Adam
 from torch.utils.data import DataLoader, Dataset
 
