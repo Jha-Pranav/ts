@@ -31,6 +31,38 @@ d = {
                 "ts/benchmark/tsdataset.py",
             ),
         },
+        "ts.commons.plot_forecast": {
+            "ts.commons.plot_forecast.mlp_dms": (
+                "src/commons.plot.html#mlp_dms",
+                "ts/commons/plot_forecast.py",
+            ),
+            "ts.commons.plot_forecast.mlp_dms_singular": (
+                "src/commons.plot.html#mlp_dms_singular",
+                "ts/commons/plot_forecast.py",
+            ),
+            "ts.commons.plot_forecast.mlp_ims": (
+                "src/commons.plot.html#mlp_ims",
+                "ts/commons/plot_forecast.py",
+            ),
+            "ts.commons.plot_forecast.mlp_ims_singular": (
+                "src/commons.plot.html#mlp_ims_singular",
+                "ts/commons/plot_forecast.py",
+            ),
+        },
+        "ts.models.dlinear": {
+            "ts.models.dlinear.SeriesDecompose": (
+                "src/model.dlinear_robust.html#seriesdecompose",
+                "ts/models/dlinear.py",
+            ),
+            "ts.models.dlinear.SeriesDecompose.__init__": (
+                "src/model.dlinear_robust.html#seriesdecompose.__init__",
+                "ts/models/dlinear.py",
+            ),
+            "ts.models.dlinear.SeriesDecompose.forward": (
+                "src/model.dlinear_robust.html#seriesdecompose.forward",
+                "ts/models/dlinear.py",
+            ),
+        },
         "ts.models.ltsf": {
             "ts.models.ltsf.LTSF": ("src/model.baseline.html#ltsf", "ts/models/ltsf.py"),
             "ts.models.ltsf.LTSF.__init__": (
@@ -57,45 +89,19 @@ d = {
                 "src/model.baseline.html#ltsf.validation_step",
                 "ts/models/ltsf.py",
             ),
-            "ts.models.ltsf.TSDataLoader": (
-                "src/model.baseline.html#tsdataloader",
-                "ts/models/ltsf.py",
+        },
+        "ts.models.nlinear": {
+            "ts.models.nlinear.SeriesDecompose": (
+                "src/model.nlinear.html#seriesdecompose",
+                "ts/models/nlinear.py",
             ),
-            "ts.models.ltsf.TSDataLoader.__init__": (
-                "src/model.baseline.html#tsdataloader.__init__",
-                "ts/models/ltsf.py",
+            "ts.models.nlinear.SeriesDecompose.__init__": (
+                "src/model.nlinear.html#seriesdecompose.__init__",
+                "ts/models/nlinear.py",
             ),
-            "ts.models.ltsf.TSDataLoader.setup": (
-                "src/model.baseline.html#tsdataloader.setup",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSDataLoader.test_dataloader": (
-                "src/model.baseline.html#tsdataloader.test_dataloader",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSDataLoader.train_dataloader": (
-                "src/model.baseline.html#tsdataloader.train_dataloader",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSDataLoader.val_dataloader": (
-                "src/model.baseline.html#tsdataloader.val_dataloader",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSRegressionDataset": (
-                "src/model.baseline.html#tsregressiondataset",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSRegressionDataset.__getitem__": (
-                "src/model.baseline.html#tsregressiondataset.__getitem__",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSRegressionDataset.__init__": (
-                "src/model.baseline.html#tsregressiondataset.__init__",
-                "ts/models/ltsf.py",
-            ),
-            "ts.models.ltsf.TSRegressionDataset.__len__": (
-                "src/model.baseline.html#tsregressiondataset.__len__",
-                "ts/models/ltsf.py",
+            "ts.models.nlinear.SeriesDecompose.forward": (
+                "src/model.nlinear.html#seriesdecompose.forward",
+                "ts/models/nlinear.py",
             ),
         },
         "ts.preprocess.dataloader": {
@@ -141,19 +147,5 @@ d = {
             ),
         },
         "ts.setup": {},
-        "ts.utils.plot_forecast": {
-            "ts.utils.plot_forecast.mlp_dms": (
-                "src/utils.plot.html#mlp_dms",
-                "ts/utils/plot_forecast.py",
-            ),
-            "ts.utils.plot_forecast.mlp_dms_singular": (
-                "src/utils.plot.html#mlp_dms_singular",
-                "ts/utils/plot_forecast.py",
-            ),
-            "ts.utils.plot_forecast.mlp_ims": (
-                "src/utils.plot.html#mlp_ims",
-                "ts/utils/plot_forecast.py",
-            ),
-        },
     },
 }
