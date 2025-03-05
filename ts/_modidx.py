@@ -31,6 +31,7 @@ d = {
                 "ts/benchmark/tsdataset.py",
             ),
         },
+        "ts.classification.mlclassifier": {},
         "ts.commons.plot_forecast": {
             "ts.commons.plot_forecast.mlp_dms": (
                 "src/commons.plot.html#mlp_dms",
@@ -47,6 +48,16 @@ d = {
             "ts.commons.plot_forecast.mlp_ims_singular": (
                 "src/commons.plot.html#mlp_ims_singular",
                 "ts/commons/plot_forecast.py",
+            ),
+        },
+        "ts.commons.stats": {
+            "ts.commons.stats.ensure_tensor": (
+                "src/commons.stats.html#ensure_tensor",
+                "ts/commons/stats.py",
+            ),
+            "ts.commons.stats.extract_stats_features": (
+                "src/commons.stats.html#extract_stats_features",
+                "ts/commons/stats.py",
             ),
         },
         "ts.models.dlinear": {
@@ -90,20 +101,7 @@ d = {
                 "ts/models/ltsf.py",
             ),
         },
-        "ts.models.nlinear": {
-            "ts.models.nlinear.SeriesDecompose": (
-                "src/model.nlinear.html#seriesdecompose",
-                "ts/models/nlinear.py",
-            ),
-            "ts.models.nlinear.SeriesDecompose.__init__": (
-                "src/model.nlinear.html#seriesdecompose.__init__",
-                "ts/models/nlinear.py",
-            ),
-            "ts.models.nlinear.SeriesDecompose.forward": (
-                "src/model.nlinear.html#seriesdecompose.forward",
-                "ts/models/nlinear.py",
-            ),
-        },
+        "ts.models.nlinear": {},
         "ts.preprocess.dataloader": {
             "ts.preprocess.dataloader.TSDataLoader": (
                 "src/preprocess.dataloader.html#tsdataloader",

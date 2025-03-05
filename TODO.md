@@ -12,9 +12,9 @@ ______________________________________________________________________
 
 ### 🔹 **1️⃣ MLP-Based (Simplest)**
 
-- [ ] MLP
-- [ ] DLinear
-- [ ] NLinear
+- [Done] MLP
+- [Done] DLinear
+- [Done] NLinear
 - [ ] TiDE
 - [ ] DeepNPTS
 - [ ] NBEATS
