@@ -59,6 +59,10 @@ d = {
                 "src/commons.stats.html#extract_stats_features",
                 "ts/commons/stats.py",
             ),
+            "ts.commons.stats.get_seasonality": (
+                "src/commons.stats.html#get_seasonality",
+                "ts/commons/stats.py",
+            ),
         },
         "ts.models.dlinear": {
             "ts.models.dlinear.SeriesDecompose": (

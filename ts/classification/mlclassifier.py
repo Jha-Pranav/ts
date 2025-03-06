@@ -8,4 +8,7 @@ import numpy as np
 import pandas as pd
 import torch
 from datasetsforecast.m4 import M4
-from sklearn.preprocessing import LabelEncoder
+from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
+from tqdm.notebook import tqdm
+
+# tqdm.pandas()
