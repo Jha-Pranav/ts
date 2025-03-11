@@ -10,15 +10,17 @@ wheels/
 node_modules/
 data/
 _proc
-
+*.json
 # Virtual environments
 .venv
 *.pt
 *.npy
+*.png
+
 # tensorboard related files
 hparams.yaml
 events.out.tfevents.*
-
+**wandb
 *.zip
 *.csv
 .ipynb_checkpoints

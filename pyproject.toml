@@ -1,33 +1,36 @@
-[tool.poetry]
+[project]
 name = "ts"
 version = "0.1.0"
-description = ""
-authors = ["Pranav Jha <pranavjha1993@gmail.com>"]
+description = "Add your description here"
 readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasetsforecast>=1.0.0",
+    "fastparquet>=2024.11.0",
+    "neuralforecast>=3.0.0",
+    "pyts>=0.13.0",
+    "scikit-learn>=1.6.1",
+    "statsforecast>=2.0.1",
+    "statsmodels>=0.14.4",
+    "torch>=2.6.0",
+    "torchvision>=0.21.0",
+    "utilsforecast>=0.2.12",
+]
 
-[tool.poetry.dependencies]
-python = "^3.11"
-torch = "^2.5.1"
-statsforecast = {extras = ["plotly"], version = "^2.0.0"}
-statsmodels = "^0.14.4"
-neuralforecast = "^1.7.6"
-utilsforecast = "^0.2.10"
-datasetsforecast = "^1.0.0"
-python-dotenv = "^1.0.1"
-jupyter = "^1.1.1"
-seaborn = "^0.13.2"
-fastparquet = "^2024.11.0"
-antropy = "^0.1.9"
-nolds = "^0.6.1"
-scikit-learn = "^1.6.1"
+[project.optional-dependencies]
+seaborn = [
+    "streamlit>=1.43.1",
+    "tensorboard>=2.19.0",
+]
 
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29.5",
+    "jupyter>=1.1.1",
+    "pre-commit>=4.1.0",
+    "python-dotenv>=1.0.1",
+    "ts",
+]
 
-[tool.poetry.group.dev.dependencies]
-python-dotenv = "^1.0.1"
-pre-commit = "^4.1.0"
-fastcore = "^1.7.29"
-nbdev = "^2.3.34"
-
-[build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+[tool.uv.sources]
+ts = { workspace = true }

@@ -22,7 +22,7 @@ from statsmodels.tsa.seasonal import STL, seasonal_decompose
 from statsmodels.tsa.stattools import acf, adfuller, kpss, pacf
 
 
-# %% ../../nbs/src/commons.stats.ipynb 3
+# %% ../../nbs/src/commons.stats.ipynb 2
 def ensure_tensor(series):
     if isinstance(series, pd.Series):
         return torch.tensor(series.values, dtype=torch.float32)
@@ -36,6 +36,8 @@ def ensure_tensor(series):
 
 def get_seasonality(series_name):
     mapping = {"D": 7, "W": 4, "M": 12, "Q": 4, "Y": 2}
+    if not series_name:
+        return 6
     return mapping.get(series_name[0], 6)  # Default period is 6 if not found
 
 
@@ -83,62 +85,32 @@ def extract_stats_features(series, max_lag=10):
         features[f"acf_{lag}"] = abs(acf_values[lag])
         features[f"pacf_{lag}"] = abs(pacf_values[lag])
 
-    # Ljung-Box Test
-    features["ljungbox_p"] = abs(acorr_ljungbox(series_np, lags=[1]).iloc[0, 1])
-
-    # Fourier Transform (Dominant Frequency)
-    fft_values = np.abs(fft(series_np))
-    features["fft_peak"] = np.max(fft_values)
-
-    # Power Spectral Density (PSD) peak
-    freqs, psd = welch(series_np)
-    features["psd_peak"] = np.max(psd)
-
-    # Hurst Exponent & Detrended Fluctuation Analysis (DFA)
-    features["hurst_exponent"] = hurst_rs(series_np)
-    features["dfa"] = dfa(series_np)
-
-    # Sparsity Measure
-    features["sparsity"] = np.sum(series_np == 0) / len(series_np)
-
-    # Entropy Measures
-    features["perm_entropy"] = ant.perm_entropy(series_np)
-    features["spectral_entropy"] = ant.spectral_entropy(series_np, sf=1.0)
-    features["svd_entropy"] = ant.svd_entropy(series_np)
-    features["approx_entropy"] = ant.app_entropy(series_np)
-    features["sample_entropy"] = ant.sample_entropy(series_np)
-
-    # Change-point detection
-    peaks, properties = find_peaks(series_np, prominence=1)
-    features["num_peaks"] = len(peaks)
-    features["peak_prominence_mean"] = (
-        np.mean(properties["prominences"]) if len(properties["prominences"]) > 0 else 0
-    )
-
-    # Determine Seasonality Period
+    # Seasonal Strength & Trend Features
     seasonality_period = get_seasonality(name)
-
-    if len(series_np) >= 2 * seasonality_period:  # Ensure enough data for decomposition
-        # STL Decomposition
+    if len(series_np) >= 2 * seasonality_period:
         stl = STL(series_np, period=seasonality_period).fit()
         features["stl_trend_std"] = np.std(stl.trend)
         features["stl_seasonal_std"] = np.std(stl.seasonal)
         features["stl_resid_std"] = np.std(stl.resid)
+        features["seasonal_strength"] = 1 - (np.var(stl.resid) / np.var(stl.seasonal))
+
+    x = np.arange(len(series_np))
+    slope, intercept = np.polyfit(x, series_np, 1)
+    features["trend_slope"] = slope
+    features["trend_curvature"] = np.polyfit(x, series_np, 2)[0]
+
+    # Recurrence & Complexity Measures
+    features["recurrence_rate"] = np.sum(np.diff(series_np) == 0) / len(series_np)
+    features["determinism"] = np.sum(np.diff(series_np) > 0) / len(series_np)
+    # features["lz_complexity"] = ant.lziv_complexity(series_np, normalize=True)
+    # features["corr_dimension"] = ant.corr_dim(series_np, emb_dim=2)
+
+    # Nonlinearity
+    features["time_reversibility"] = np.mean((series_np[:-1] - series_np[1:]) ** 3)
 
     # Longest flat segment
     features["longest_flat_segment"] = max(
         [len(list(g)) for k, g in groupby(series_np) if k == 0], default=0
-    )
-
-    # Wavelet Transform Features
-    coeffs = pywt.wavedec(series_np, "db4", level=3)
-    features["wavelet_energy"] = sum(np.sum(np.abs(c) ** 2) for c in coeffs)
-    features["wavelet_entropy"] = stats.entropy(np.hstack(coeffs))
-
-    # Higher Order Moments
-    features["mean_abs_change"] = np.mean(np.abs(np.diff(series_np)))
-    features["longest_positive_run"] = max(
-        [sum(1 for _ in g) for k, g in groupby(series_np > 0) if k], default=0
     )
 
     return pd.Series(features)
