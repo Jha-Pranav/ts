@@ -9,6 +9,11 @@ from typing import Generator, Tuple
 
 import pandas as pd
 from sktime.datasets import load_from_tsfile_to_dataframe
+import os
+import pandas as pd
+import numpy as np
+from sktime.datasets import load_from_tsfile_to_dataframe
+from typing import Generator, Tuple
 
 # %% ../../nbs/src/utils.benchmark.ipynb 2
 class TimeSeriesBenchmarkDataset:
@@ -68,7 +73,7 @@ class TimeSeriesBenchmarkDataset:
         dataset_path = os.path.join(self.dataset_dir, dataset_name)
 
         try:
-            # CSV-based datasets
+            # CSV-based datasets (Forecasting)
             if dataset_name in [
                 "electricity",
                 "exchange_rate",
@@ -86,23 +91,19 @@ class TimeSeriesBenchmarkDataset:
                 return df
 
             # .TS file-based datasets (Classification)
-            elif dataset_name in [
-                "EthanolConcentration",
-                "FaceDetection",
-                "Handwriting",
-                "JapaneseVowels",
-                "PEMS-SF",
-                "SelfRegulationSCP1",
-                "SelfRegulationSCP2",
-                "SpokenArabicDigits",
-                "UWaveGestureLibrary",
-            ]:
+            elif dataset_name in self.task_datasets["classification"]:
                 train_file = os.path.join(dataset_path, f"{dataset_name}_TRAIN.ts")
                 test_file = os.path.join(dataset_path, f"{dataset_name}_TEST.ts")
-                df_train, _ = load_from_tsfile_to_dataframe(train_file)
-                df_test, _ = load_from_tsfile_to_dataframe(test_file)
+
+                df_train, y_train = load_from_tsfile_to_dataframe(train_file)
+                df_test, y_test = load_from_tsfile_to_dataframe(test_file)
+
+                df_train["label"] = y_train
+                df_test["label"] = y_test
+
                 df = pd.concat([df_train, df_test], ignore_index=True)
-                return self.to_long_format(df, dataset_name)
+
+                return df  # Keeping label column for classification
 
             # .NPY file-based datasets (Anomaly Detection)
             elif dataset_name in ["MSL", "SMD", "SMAP"]:
