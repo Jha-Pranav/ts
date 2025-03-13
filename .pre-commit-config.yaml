@@ -19,22 +19,24 @@ repos:
     rev: 0.6.5
     hooks:
       - id: uv-lock
+  ### This is conflicting with nbdev_export
+  # - repo: https://github.com/psf/black
+  #   rev: 25.1.0
+  #   hooks:
+  #     - id: black
+  #       args:
+  #         - --line-length
+  #         - "99"
+  #         - --skip-string-normalization
+  # - repo: https://github.com/PyCQA/isort
+  #   rev: 6.0.1
+  #   hooks:
+  #     - id: isort
+  #       args:
+  #         - --profile
+  #         - black
+  #         - --filter-files
 
-  - repo: https://github.com/psf/black
-    rev: 25.1.0
-    hooks:
-      - id: black
-        args:
-          - --line-length
-          - "99"
-  - repo: https://github.com/PyCQA/isort
-    rev: 6.0.1
-    hooks:
-      - id: isort
-        args:
-          - --profile
-          - black
-          - --filter-files
   - repo: https://github.com/pre-commit/mirrors-prettier
     rev: v4.0.0-alpha.8
     hooks:
