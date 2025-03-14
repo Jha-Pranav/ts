@@ -4,20 +4,6 @@
 __all__ = ['train_transforms', 'TimeSeriesImageDataset', 'TimeSeriesDataset', 'TimeSeriesDataModule', 'TSImageClassifier',
            'compute_conv_params', 'ChannelReducerAndDownscaler', 'TSNDTensorClassifier']
 
-# %% ../../nbs/src/classification.cnnclassifer.ipynb 2
-import os
-
-import copy
-import pandas as pd
-import pytorch_lightning as pl
-import torch
-import torch.nn as nn
-import torch.optim as optim
-import torchmetrics
-from PIL import Image
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
-from torchvision import models, transforms
-
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 3
 class TimeSeriesImageDataset(Dataset):
     """Loads time series image data from .png files and corresponding labels from labels.json."""
@@ -99,7 +85,7 @@ class TimeSeriesDataModule(pl.LightningDataModule):
         val_split=0.1,
         test_split=0.1,
         resize_shape=(350, 350),
-        transform = None
+        transform=None,
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -109,7 +95,6 @@ class TimeSeriesDataModule(pl.LightningDataModule):
         self.test_split = test_split
         self.resize_shape = resize_shape
         self.transform = transform
-
 
     def setup(self, stage=None):
         """Randomly split dataset into train, validation, and test sets."""
@@ -135,7 +120,6 @@ class TimeSeriesDataModule(pl.LightningDataModule):
 
         self.val_dataset = val_dataset  # No transform
         self.test_dataset = test_dataset  # No transform
-
 
     def train_dataloader(self):
         return DataLoader(
@@ -293,6 +277,8 @@ class TSImageClassifier(pl.LightningModule):
 
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 7
 # Compute dynamic convolution parameters
+
+
 def compute_conv_params(input_size, output_size):
     stride = input_size // output_size
     kernel_size = (stride * 2) if stride > 1 else 3
@@ -320,7 +306,7 @@ class ChannelReducerAndDownscaler(nn.Module):
         self.spatial_downscaler = nn.Sequential(
             nn.Conv2d(reduced_channels, reduced_channels, kernel_size, stride, padding),
             nn.LayerNorm([reduced_channels, output_size, output_size]),  # LayerNorm for stability
-            nn.ReLU()
+            nn.ReLU(),
         )
 
     def forward(self, x):
@@ -366,7 +352,9 @@ class TSNDTensorClassifier(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         self.lr = lr
         self.accuracy = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
-        self.f1_score = torchmetrics.F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.f1_score = torchmetrics.F1Score(
+            task="multiclass", num_classes=num_classes, average="macro"
+        )
         self.auc = torchmetrics.AUROC(task="multiclass", num_classes=num_classes)
 
         # Initialize Weights with Xavier
@@ -420,7 +408,9 @@ class TSNDTensorClassifier(pl.LightningModule):
     def compute_metrics(self, logits, y, prefix):
         preds = torch.argmax(logits, dim=1)
         acc, f1, auc = self.accuracy(preds, y), self.f1_score(preds, y), self.auc(logits, y)
-        self.log_dict({f"{prefix}_accuracy": acc, f"{prefix}_f1": f1, f"{prefix}_auc": auc}, prog_bar=True)
+        self.log_dict(
+            {f"{prefix}_accuracy": acc, f"{prefix}_f1": f1, f"{prefix}_auc": auc}, prog_bar=True
+        )
 
     def training_step(self, batch, batch_idx):
         x, y = batch
@@ -448,11 +438,3 @@ class TSNDTensorClassifier(pl.LightningModule):
         optimizer = optim.AdamW(self.parameters(), lr=self.lr)
         scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)  # Increased T_max
         return [optimizer], [scheduler]
-
-
-# Time Series-Safe Augmentations
-train_transforms = T.Compose([
-    T.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-    T.RandomApply([T.RandomErasing(p=1.0, scale=(0.02, 0.05))], p=0.5),
-    T.Normalize(mean=[0.5], std=[0.5]),
-])
