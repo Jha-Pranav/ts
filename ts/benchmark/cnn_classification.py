@@ -13,6 +13,7 @@ import wandb
 from pytorch_lightning.loggers import WandbLogger
 import torch
 from tqdm.notebook import tqdm
+import torchvision.transforms as T
 
 torch.set_float32_matmul_precision("medium")
 import gc
@@ -55,7 +56,7 @@ for dataset in ds_list:
     batch_size = 4 if input_size > 550 else 64
 
     ds = TimeSeriesDataModule(
-        data_dir=f"{dataset}_classification",
+        data_dir=f"{dataset}_classification",transform=train_transforms,
         batch_size=batch_size,
         num_workers=6 if batch_size < 8 else 16,  # Optimize workers for memory
       #  persistent_workers=False,  # Prevent memory leaks in DataLoader
