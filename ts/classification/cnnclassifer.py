@@ -5,23 +5,17 @@ __all__ = ['TimeSeriesImageDataset', 'TimeSeriesDataset', 'TimeSeriesDataModule'
            'ChannelReducerAndDownscaler', 'TSNDTensorClassifier']
 
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 2
-import pandas as pd
 import os
-
-import torch
-from PIL import Image
-from torch.utils.data import Dataset
-from torchvision import transforms
-from torch.utils.data import DataLoader, Dataset, Subset, random_split
-import torch
-import torch.nn as nn
+import pandas as pd
 import pytorch_lightning as pl
-
 import torch
 import torch.nn as nn
 import torch.optim as optim
 import torchmetrics
-from torchvision import models
+from PIL import Image
+from torch.utils.data import DataLoader, Dataset, Subset, random_split
+from torchvision import models, transforms
+
 
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 3
 class TimeSeriesImageDataset(Dataset):
@@ -94,8 +88,6 @@ class TimeSeriesDataset(Dataset):
 
         return image, label
 
-
-
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 5
 class TimeSeriesDataModule(pl.LightningDataModule):
     def __init__(
@@ -105,7 +97,7 @@ class TimeSeriesDataModule(pl.LightningDataModule):
         num_workers=4,
         val_split=0.1,
         test_split=0.1,
-        resize_shape=(350, 350)
+        resize_shape=(350, 350),
     ):
         super().__init__()
         self.data_dir = data_dir
@@ -287,13 +279,18 @@ class TSImageClassifier(pl.LightningModule):
 
 # %% ../../nbs/src/classification.cnnclassifer.ipynb 8
 # Compute dynamic convolution parameters
+
+
 def compute_conv_params(input_size, output_size):
     stride = input_size // output_size
     kernel_size = (stride * 2) if stride > 1 else 3
     padding = (kernel_size - stride) // 2
     return kernel_size, stride, padding
 
+
 # Preprocessing: Channel Reduction & Spatial Downsampling
+
+
 class ChannelReducerAndDownscaler(nn.Module):
     def __init__(self, in_channels=164, reduced_channels=3, input_size=500, output_size=250):
         super(ChannelReducerAndDownscaler, self).__init__()
@@ -301,27 +298,46 @@ class ChannelReducerAndDownscaler(nn.Module):
 
         # Reduce Channels
         self.channel_reducer = nn.Sequential(
-            nn.Conv2d(in_channels, 32, kernel_size=1), nn.ReLU(),
-            nn.Conv2d(32, reduced_channels, kernel_size=1), nn.ReLU()
+            nn.Conv2d(in_channels, 32, kernel_size=1),
+            nn.ReLU(),
+            nn.Conv2d(32, reduced_channels, kernel_size=1),
+            nn.ReLU(),
         )
 
         # Downscale Spatial Dimensions using Conv instead of Linear
-        self.spatial_downscaler = nn.Conv2d(reduced_channels, reduced_channels, kernel_size, stride, padding)
+        self.spatial_downscaler = nn.Conv2d(
+            reduced_channels, reduced_channels, kernel_size, stride, padding
+        )
 
     def forward(self, x):
         x = self.channel_reducer(x)  # Reduce channels
         x = self.spatial_downscaler(x)  # Downscale
         return x  # Output: (batch, channels, output_size, output_size)
 
+
 # Combined Model: Preprocessing + Classification
+
+
 class TSNDTensorClassifier(pl.LightningModule):
-    def __init__(self, model_name="convnext_tiny", num_classes=10, hidden_feature=256, lr=5e-4, freeze_backbone=True,
-                 in_channels=164, reduced_channels=3, input_size=500, output_size=250):
+    def __init__(
+        self,
+        model_name="convnext_tiny",
+        num_classes=10,
+        hidden_feature=256,
+        lr=5e-4,
+        freeze_backbone=True,
+        in_channels=164,
+        reduced_channels=3,
+        input_size=500,
+        output_size=250,
+    ):
         super().__init__()
         self.save_hyperparameters()
 
         # Add Preprocessing (Channel Reduction & Downsampling)
-        self.preprocessor = ChannelReducerAndDownscaler(in_channels, reduced_channels, input_size, output_size)
+        self.preprocessor = ChannelReducerAndDownscaler(
+            in_channels, reduced_channels, input_size, output_size
+        )
 
         # Load Pretrained Model
         self.pretrained_model = self._load_model(model_name)
@@ -338,7 +354,9 @@ class TSNDTensorClassifier(pl.LightningModule):
         self.criterion = nn.CrossEntropyLoss()
         self.lr = lr
         self.accuracy = torchmetrics.Accuracy(task="multiclass", num_classes=num_classes)
-        self.f1_score = torchmetrics.F1Score(task="multiclass", num_classes=num_classes, average="macro")
+        self.f1_score = torchmetrics.F1Score(
+            task="multiclass", num_classes=num_classes, average="macro"
+        )
         self.auc = torchmetrics.AUROC(task="multiclass", num_classes=num_classes)
 
     def _load_model(self, model_name):
@@ -350,7 +368,9 @@ class TSNDTensorClassifier(pl.LightningModule):
             "resnet50": models.resnet50(weights="IMAGENET1K_V1"),
         }
         if model_name not in model_dict:
-            raise ValueError(f"Unsupported model '{model_name}'. Choose from {list(model_dict.keys())}.")
+            raise ValueError(
+                f"Unsupported model '{model_name}'. Choose from {list(model_dict.keys())}."
+            )
         return model_dict[model_name]
 
     def _modify_classifier(self, hidden_feature, num_classes):
@@ -358,13 +378,17 @@ class TSNDTensorClassifier(pl.LightningModule):
         if hasattr(self.pretrained_model, "classifier"):
             in_features = self.pretrained_model.classifier[-1].in_features
             self.pretrained_model.classifier[-1] = nn.Sequential(
-                nn.Linear(in_features, hidden_feature), nn.ReLU(), nn.Dropout(p=0.3),
+                nn.Linear(in_features, hidden_feature),
+                nn.ReLU(),
+                nn.Dropout(p=0.3),
                 nn.Linear(hidden_feature, num_classes),
             )
         elif hasattr(self.pretrained_model, "fc"):
             in_features = self.pretrained_model.fc.in_features
             self.pretrained_model.fc = nn.Sequential(
-                nn.Linear(in_features, hidden_feature), nn.ReLU(), nn.Dropout(p=0.3),
+                nn.Linear(in_features, hidden_feature),
+                nn.ReLU(),
+                nn.Dropout(p=0.3),
                 nn.Linear(hidden_feature, num_classes),
             )
 
@@ -377,7 +401,9 @@ class TSNDTensorClassifier(pl.LightningModule):
     def compute_metrics(self, logits, y, prefix):
         preds = torch.argmax(logits, dim=1)
         acc, f1, auc = self.accuracy(preds, y), self.f1_score(preds, y), self.auc(logits, y)
-        self.log_dict({f"{prefix}_accuracy": acc, f"{prefix}_f1": f1, f"{prefix}_auc": auc}, prog_bar=True)
+        self.log_dict(
+            {f"{prefix}_accuracy": acc, f"{prefix}_f1": f1, f"{prefix}_auc": auc}, prog_bar=True
+        )
 
     def training_step(self, batch, batch_idx):
         x, y = batch

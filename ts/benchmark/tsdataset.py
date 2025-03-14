@@ -7,13 +7,9 @@ __all__ = ['TimeSeriesBenchmarkDataset']
 import os
 from typing import Generator, Tuple
 
-import pandas as pd
-from sktime.datasets import load_from_tsfile_to_dataframe
-import os
-import pandas as pd
 import numpy as np
+import pandas as pd
 from sktime.datasets import load_from_tsfile_to_dataframe
-from typing import Generator, Tuple
 
 # %% ../../nbs/src/utils.benchmark.ipynb 2
 class TimeSeriesBenchmarkDataset:

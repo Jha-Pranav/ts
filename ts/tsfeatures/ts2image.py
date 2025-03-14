@@ -6,6 +6,7 @@ __all__ = ['transform_to_images', 'plot_ts2img', 'transform_tensor2img', 'transf
 # %% ../../nbs/src/tsfeatures.image.ipynb 3
 import json  # For saving labels in a single JSON file
 import os
+import shutil
 import warnings
 from datetime import datetime, timedelta
 
@@ -22,7 +23,7 @@ from pyts.image import GramianAngularField, MarkovTransitionField, RecurrencePlo
 from sklearn.preprocessing import LabelEncoder, MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset, Subset, random_split
 from tqdm import tqdm
-import shutil
+
 warnings.simplefilter("ignore", category=UserWarning)
 from tqdm import tqdm
 
@@ -191,6 +192,7 @@ def transform_tensor2img(
 # %% ../../nbs/src/tsfeatures.image.ipynb 8
 def transform_ts2img_tensor(df, label_col, data_dir="processed_data", categorical_label=False):
     df = df.copy(deep=True)
+
     # Delete the directory if it exists
     if os.path.exists(data_dir):
         shutil.rmtree(data_dir)
@@ -210,10 +212,23 @@ def transform_ts2img_tensor(df, label_col, data_dir="processed_data", categorica
 
     # Save (image, label) pairs
     for idx, series in tqdm(df.iterrows(), total=len(df), desc="Transforming & Saving (X, y)"):
-        if type(series.values[0]) == pd.Series:
-            img_tensor = torch.concat([transform_to_images(series.iloc[col]) for col in range(len(series))])
+        if isinstance(series.values[0], pd.Series):
+            tensors = [transform_to_images(series.iloc[col]) for col in range(len(series))]
+
+            # Find the minimum sequence length
+            min_seq_len = min(tensor.shape[-1] for tensor in tensors)
+
+            # Truncate tensors to the minimum size
+            truncated_tensors = [tensor[..., :min_seq_len] for tensor in tensors]
+
+            img_tensor = torch.cat(truncated_tensors, dim=0)  # Concatenate along batch/feature dim
         else:
             img_tensor = transform_to_images(series)  # Ensure this returns a torch tensor
-        sample = {"image": img_tensor, "label": torch.tensor(labels[series.name], dtype=torch.long)}
+
+        sample = {
+            "image": img_tensor,
+            "label": torch.tensor(labels[series.name], dtype=torch.long),
+        }
+
         with open(os.path.join(data_dir, f"{idx}.pt"), "wb") as f:
             torch.save(sample, f)  # Save both X and y together
