@@ -4,52 +4,56 @@
 __all__ = ['train_transforms', 'benchmark', 'ds_list']
 
 # %% ../../nbs/src/benchmark.classification.ipynb 1
+import json
+
+import pytorch_lightning as pl
+import torch
+import torchvision.transforms as T
+import wandb
+from pytorch_lightning.loggers import WandbLogger
+from tqdm.notebook import tqdm
+
+# | export
 from .tsdataset import TimeSeriesBenchmarkDataset
 from ..classification.cnnclassifer import TimeSeriesDataModule, TSNDTensorClassifier
 from ..tsfeatures.ts2image import transform_ts2img_tensor
-import json
-import pytorch_lightning as pl
-import wandb
-from pytorch_lightning.loggers import WandbLogger
-import torch
-from tqdm.notebook import tqdm
-import torchvision.transforms as T
 
 torch.set_float32_matmul_precision("medium")
 import gc
 
 # %% ../../nbs/src/benchmark.classification.ipynb 2
 # Time Series-Safe Augmentations
-train_transforms = T.Compose([
-    T.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
-    T.RandomApply([T.RandomErasing(p=1.0, scale=(0.02, 0.05))], p=0.5),
-    T.Normalize(mean=[0.5], std=[0.5]),
-])
+train_transforms = T.Compose(
+    [
+        T.GaussianBlur(kernel_size=3, sigma=(0.1, 2.0)),
+        T.RandomApply([T.RandomErasing(p=1.0, scale=(0.02, 0.05))], p=0.5),
+        # T.Normalize(mean=[0.5], std=[0.5]),
+    ]
+)
 
 # %% ../../nbs/src/benchmark.classification.ipynb 3
 benchmark = TimeSeriesBenchmarkDataset()
 # ds_list = benchmark.task_datasets["classification"]
 ds_list = [
- 'EthanolConcentration',
- 'FaceDetection',
- 'Handwriting',
- # 'JapaneseVowels',   # Shape missmatch
- # 'PEMS-SF',          # cuda out of memorry
- 'SelfRegulationSCP1',
- 'SelfRegulationSCP2',
- # 'SpokenArabicDigits',   # Shape missmatch
- 'UWaveGestureLibrary'
+    "EthanolConcentration",
+    "FaceDetection",
+    "Handwriting",
+    # 'JapaneseVowels',   # Shape missmatch
+    # 'PEMS-SF',          # cuda out of memorry
+    "SelfRegulationSCP1",
+    "SelfRegulationSCP2",
+    # 'SpokenArabicDigits',   # Shape missmatch
+    "UWaveGestureLibrary",
 ]
 
-for dataset in ds_list:
-    print("Processing >>  ", dataset)
-    df = benchmark.load_dataset(dataset)
-    # df = df.sample(min(500, len(df)), replace=False).reset_index(drop=True)
-
-    transform_ts2img_tensor(df, data_dir=f"{dataset}_classification", categorical_label=True, label_col="label")
-    del df
-    gc.collect()  # Force garbage collection
-
+# for dataset in ds_list:
+#     print("Processing >>  ", dataset)
+#     df = benchmark.load_dataset(dataset)
+#     transform_ts2img_tensor(
+#         df, data_dir=f"{dataset}_classification", categorical_label=True, label_col="label"
+#     )
+#     del df
+#     gc.collect()  # Force garbage collection
 
 # %% ../../nbs/src/benchmark.classification.ipynb 4
 for dataset in ds_list:
@@ -68,10 +72,11 @@ for dataset in ds_list:
     batch_size = 4 if input_size > 550 else 64
 
     ds = TimeSeriesDataModule(
-        data_dir=f"{dataset}_classification",transform=train_transforms,
+        data_dir=f"{dataset}_classification",
+        transform=train_transforms,
         batch_size=batch_size,
         num_workers=6 if batch_size < 8 else 16,  # Optimize workers for memory
-      #  persistent_workers=False,  # Prevent memory leaks in DataLoader
+        #  persistent_workers=False,  # Prevent memory leaks in DataLoader
     )
     del x
     gc.collect()
@@ -89,9 +94,7 @@ for dataset in ds_list:
         project="benchmark-ts-classification",
         name=f"cnn.model=efficientnet_b0.ds={dataset}",
     )
-    wandb_logger.experiment.config.update(
-        {"model": "efficientnet_b0", "finetune": False}
-    )
+    wandb_logger.experiment.config.update({"model": "efficientnet_b0", "finetune": False})
     wandb_logger.watch(model, log="all")
     trainer = pl.Trainer(
         logger=wandb_logger,
@@ -100,7 +103,7 @@ for dataset in ds_list:
         min_epochs=1,
         max_epochs=100,
         enable_checkpointing=True,
-        precision='bf16-mixed',
+        precision="bf16-mixed",
         callbacks=[pl.callbacks.EarlyStopping("val_loss", patience=5, verbose=False)],
     )
 
