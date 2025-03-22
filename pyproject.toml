@@ -36,9 +36,11 @@ dev = [
     "jupyterlab-git>=0.51.0",
     "langchain-ollama>=0.2.3",
     "matplotlib>=3.10.1",
+    "mito-ai>=0.1.17",
     "nbdev>=2.3.35",
     "pre-commit>=4.1.0",
     "python-dotenv>=1.0.1",
+    "seaborn>=0.13.2",
 ]
 
 [build-system]
