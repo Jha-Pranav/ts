@@ -6,45 +6,46 @@ __all__ = ['device', 'Block', 'NBeatsG']
 # %% ../../nbs/models/model.nbeats.ipynb 1
 import numpy as np
 import pandas as pd
-
 import pytorch_lightning as pl
 import torch
 import torch.nn as nn
-
 from torch.optim import Adam
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics import SymmetricMeanAbsolutePercentageError
 
-
 from ..commons.loss import MASE, OWA
+torch.set_float32_matmul_precision('high')
 
 # %% ../../nbs/models/model.nbeats.ipynb 2
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu"
 
 # %% ../../nbs/models/model.nbeats.ipynb 7
 class Block(nn.Module):
-    def __init__(self, input_size, horizon,hidden_size, theta_size):
+    def __init__(self, input_size, horizon, hidden_size, theta_size):
         super().__init__()
         self.fc = nn.Sequential(
-            nn.Linear(input_size,hidden_size),
+            nn.Linear(input_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size,hidden_size),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size,hidden_size),
+            nn.Linear(hidden_size, hidden_size),
             nn.ReLU(),
-            nn.Linear(hidden_size,theta_size)
+            nn.Linear(hidden_size, theta_size),
         )
-        self.backcast_basis = nn.Linear(theta_size, input_size,bias=False)
+        self.backcast_basis = nn.Linear(theta_size, input_size, bias=False)
         self.forecast_basis = nn.Linear(theta_size, horizon, bias=False)
 
-    def forward(self,x):
+    def forward(self, x):
         theta = self.fc(x)
         backcast = self.backcast_basis(theta)
         forecast = self.forecast_basis(theta)
         return backcast, forecast
 
 # %% ../../nbs/models/model.nbeats.ipynb 8
+import time
+from memory_profiler import profile
+
 class NBeatsG(pl.LightningModule):
     def __init__(
         self,
@@ -90,7 +91,7 @@ class NBeatsG(pl.LightningModule):
                 stack_forecast += block_forecast
             forecast += stack_forecast
         return forecast
-
+    @profile
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
@@ -98,6 +99,7 @@ class NBeatsG(pl.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
+    @profile
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)

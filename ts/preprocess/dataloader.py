@@ -7,9 +7,8 @@ __all__ = ['logger', 'device', 'TSRegressionDataset', 'TSDataLoader', 'Univariat
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from torch.utils.data import DataLoader, Dataset
-
 from sklearn.preprocessing import MinMaxScaler
+from torch.utils.data import DataLoader, Dataset
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 2
 import logging
@@ -19,7 +18,6 @@ import warnings
 logging.basicConfig(level=logging.WARNING)  # Change to DEBUG for more details
 
 logger = logging.getLogger(__name__)
-
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 4
 device = "cuda" if torch.cuda.is_available() else "cpu"
@@ -159,6 +157,7 @@ class UnivariateTSDataset(Dataset):
         x, y = self.windows[idx]
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
+
 class UnivariateTSDataModule(pl.LightningDataModule):
     def __init__(
         self,
@@ -166,13 +165,13 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         input_size,
         horizon,
         batch_size=32,
-        num_workers = 12,
+        num_workers=12,
         train_split=0.7,
         val_split=0.15,
         normalize=True,
         scaler_type="minmax",
         split_type="horizontal",  # New: "horizontal" or "vertical"
-        step_size=1  # New: Step size for sliding window
+        step_size=1,  # New: Step size for sliding window
     ):
         """
         Args:
@@ -217,6 +216,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
                 scaler_class = MinMaxScaler
             elif self.scaler_type == "standard":
                 from sklearn.preprocessing import StandardScaler
+
                 scaler_class = StandardScaler
             else:
                 raise ValueError("scaler_type must be 'minmax' or 'standard'")
@@ -237,7 +237,9 @@ class UnivariateTSDataModule(pl.LightningDataModule):
             for unique_id, series in normalized_series.items():
                 series_len = len(series)
                 if series_len < self.input_size + self.horizon:
-                    logger.warning(f"{unique_id} - Series length {series_len} is too short for input_size={self.input_size} + horizon={self.horizon}")
+                    logger.warning(
+                        f"{unique_id} - Series length {series_len} is too short for input_size={self.input_size} + horizon={self.horizon}"
+                    )
                     continue
 
                 max_idx = series_len - self.input_size - self.horizon + 1
@@ -253,8 +255,8 @@ class UnivariateTSDataModule(pl.LightningDataModule):
                 for j in range(0, max_idx, self.step_size):
                     if j + self.input_size + self.horizon > series_len:
                         break  # Ensure window doesn’t exceed series length
-                    x = series[j:j + self.input_size]
-                    y = series[j + self.input_size:j + self.input_size + self.horizon]
+                    x = series[j : j + self.input_size]
+                    y = series[j + self.input_size : j + self.input_size + self.horizon]
                     window = (x, y)
                     window_idx = j // self.step_size
                     if window_idx < train_end:
@@ -290,8 +292,8 @@ class UnivariateTSDataModule(pl.LightningDataModule):
                 for j in range(0, max_idx, self.step_size):
                     if j + self.input_size + self.horizon > series_len:
                         break
-                    x = series[j:j + self.input_size]
-                    y = series[j + self.input_size:j + self.input_size + self.horizon]
+                    x = series[j : j + self.input_size]
+                    y = series[j + self.input_size : j + self.input_size + self.horizon]
                     train_windows.append((x, y))
 
             for unique_id in val_ids:
@@ -308,8 +310,8 @@ class UnivariateTSDataModule(pl.LightningDataModule):
                 for j in range(0, max_idx, self.step_size):
                     if j + self.input_size + self.horizon > series_len:
                         break
-                    x = series[j:j + self.input_size]
-                    y = series[j + self.input_size:j + self.input_size + self.horizon]
+                    x = series[j : j + self.input_size]
+                    y = series[j + self.input_size : j + self.input_size + self.horizon]
                     val_windows.append((x, y))
 
             for unique_id in test_ids:
@@ -326,8 +328,8 @@ class UnivariateTSDataModule(pl.LightningDataModule):
                 for j in range(0, max_idx, self.step_size):
                     if j + self.input_size + self.horizon > series_len:
                         break
-                    x = series[j:j + self.input_size]
-                    y = series[j + self.input_size:j + self.input_size + self.horizon]
+                    x = series[j : j + self.input_size]
+                    y = series[j + self.input_size : j + self.input_size + self.horizon]
                     test_windows.append((x, y))
 
         else:
@@ -337,16 +339,36 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         self.val_dataset = UnivariateTSDataset(val_windows)
         self.test_dataset = UnivariateTSDataset(test_windows)
 
-        logger.info(f"Train windows: {len(train_windows)}, Val windows: {len(val_windows)}, Test windows: {len(test_windows)}")
+        logger.info(
+            f"Train windows: {len(train_windows)}, Val windows: {len(val_windows)}, Test windows: {len(test_windows)}"
+        )
 
     def train_dataloader(self):
-        return DataLoader(self.train_dataset, batch_size=self.batch_size, shuffle=True, num_workers=self.num_workers,pin_memory=True)
+        return DataLoader(
+            self.train_dataset,
+            batch_size=self.batch_size,
+            shuffle=True,
+            num_workers=self.num_workers,
+            pin_memory=False,
+        )
 
     def val_dataloader(self):
-        return DataLoader(self.val_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers,pin_memory=True)
+        return DataLoader(
+            self.val_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=False,
+        )
 
     def test_dataloader(self):
-        return DataLoader(self.test_dataset, batch_size=self.batch_size, shuffle=False, num_workers=self.num_workers,pin_memory=True)
+        return DataLoader(
+            self.test_dataset,
+            batch_size=self.batch_size,
+            shuffle=False,
+            num_workers=self.num_workers,
+            pin_memory=False,
+        )
 
     def inverse_transform(self, data, unique_id):
         if self.normalize and unique_id in self.scalers:
