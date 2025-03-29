@@ -15,7 +15,8 @@ from torch.utils.data import DataLoader, Dataset
 from torchmetrics import SymmetricMeanAbsolutePercentageError
 
 from ..commons.loss import MASE, OWA
-torch.set_float32_matmul_precision('high')
+
+torch.set_float32_matmul_precision("high")
 
 # %% ../../nbs/models/model.nbeats.ipynb 2
 device = "cuda" if torch.cuda.is_available() else "mps" if torch.mps.is_available() else "cpu"
@@ -43,9 +44,6 @@ class Block(nn.Module):
         return backcast, forecast
 
 # %% ../../nbs/models/model.nbeats.ipynb 8
-import time
-from memory_profiler import profile
-
 class NBeatsG(pl.LightningModule):
     def __init__(
         self,
@@ -79,19 +77,26 @@ class NBeatsG(pl.LightningModule):
         self.smape = SymmetricMeanAbsolutePercentageError()
         self.mase = MASE(input_size, horizon)
         self.owa = OWA(self.smape, self.mase)
+        # Lazy metric initialization
+
+        self._metrics = None
+        self.register_buffer("forecast_template", torch.zeros(1, horizon))
 
     def forward(self, x):
-        forecast = torch.zeros(x.shape[0], self.horizon).to(x.device)
-        residual = x
+        forecast = self.forecast_template.expand(x.size(0), -1).clone()  # Clone to allocate separate memory
+        residual = x.clone()  # Avoid modifying input directly
+
         for stack in self.stacks:
             stack_forecast = torch.zeros_like(forecast)
             for block in stack:
                 backcast, block_forecast = block(residual)
-                residual = residual - backcast
-                stack_forecast += block_forecast
-            forecast += stack_forecast
+                residual = residual - backcast  # Avoid in-place subtraction
+                stack_forecast = stack_forecast + block_forecast  # Avoid in-place addition
+            forecast = forecast + stack_forecast  # Avoid in-place addition
+
         return forecast
-    @profile
+
+
     def training_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)
@@ -99,7 +104,6 @@ class NBeatsG(pl.LightningModule):
         self.log("train_loss", loss, on_step=True, on_epoch=True, prog_bar=True)
         return loss
 
-    @profile
     def validation_step(self, batch, batch_idx):
         x, y = batch
         y_hat = self(x)

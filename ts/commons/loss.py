@@ -10,7 +10,6 @@ from torchmetrics import Metric
 # %% ../../nbs/commons/commons.loss.ipynb 2
 # Custom MASE Metric (since it's not built into torchmetrics)
 
-
 class MASE(Metric):
     def __init__(self, input_size, horizon):
         super().__init__()
@@ -33,9 +32,9 @@ class MASE(Metric):
         self.num_samples += y_true.size(0)
 
     def compute(self):
-        if self.naive_error == 0:
+        if self.naive_error < 1e-8:
             return torch.tensor(float("inf"), device=self.forecast_error.device)
-        return self.forecast_error / self.naive_error / self.num_samples
+        return self.forecast_error / self.naive_error
 
 # %% ../../nbs/commons/commons.loss.ipynb 3
 # Custom OWA Metric
@@ -67,7 +66,7 @@ class OWA(Metric):
         self.num_samples += y_true.size(0)
 
     def compute(self):
-        if self.smape_naive == 0 or self.mase_naive == 0:
+        if self.smape_naive < 1e-8 or self.mase_naive < 1e-8:
             return torch.tensor(float("inf"), device=self.smape_model.device)
         smape_ratio = self.smape_model / self.smape_naive
         mase_ratio = self.mase_model / self.mase_naive
