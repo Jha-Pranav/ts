@@ -83,7 +83,9 @@ class NBeatsG(pl.LightningModule):
         self.register_buffer("forecast_template", torch.zeros(1, horizon))
 
     def forward(self, x):
-        forecast = self.forecast_template.expand(x.size(0), -1).clone()  # Clone to allocate separate memory
+        forecast = self.forecast_template.expand(
+            x.size(0), -1
+        ).clone()  # Clone to allocate separate memory
         residual = x.clone()  # Avoid modifying input directly
 
         for stack in self.stacks:
@@ -95,7 +97,6 @@ class NBeatsG(pl.LightningModule):
             forecast = forecast + stack_forecast  # Avoid in-place addition
 
         return forecast
-
 
     def training_step(self, batch, batch_idx):
         x, y = batch

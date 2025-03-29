@@ -10,6 +10,7 @@ from torchmetrics import Metric
 # %% ../../nbs/commons/commons.loss.ipynb 2
 # Custom MASE Metric (since it's not built into torchmetrics)
 
+
 class MASE(Metric):
     def __init__(self, input_size, horizon):
         super().__init__()
@@ -38,6 +39,8 @@ class MASE(Metric):
 
 # %% ../../nbs/commons/commons.loss.ipynb 3
 # Custom OWA Metric
+
+
 class OWA(Metric):
     def __init__(self, smape, mase):
         super().__init__()
