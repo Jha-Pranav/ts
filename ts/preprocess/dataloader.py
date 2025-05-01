@@ -5,11 +5,23 @@ __all__ = ['logger', 'device', 'TSRegressionDataset', 'TSDataLoader', 'Univariat
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 1
 from typing import Optional
+
 import numpy as np
 import pytorch_lightning as pl
 import torch
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
+# from torch.serialization import safe_globals
+import os
+import pickle
+import gc
+from pathlib import Path
+import torch
+import numpy as np
+import pandas as pd
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
+from torch.utils.data import Dataset, DataLoader
+import pytorch_lightning as pl
 
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 2
@@ -17,7 +29,7 @@ import logging
 import warnings
 
 # Configure logging
-logging.basicConfig(level=logging.WARNING)  # Change to DEBUG for more details
+logging.basicConfig(level=logging.ERROR)  # Change to DEBUG for more details
 
 logger = logging.getLogger(__name__)
 
@@ -150,18 +162,13 @@ if __name__ == "__main__":
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 8
 class UnivariateTSDataset(Dataset):
     def __init__(self, windows, device: Optional[str] = None):
-        """
-        Args:
-            windows: List of (x, y) window tuples
-            device: If specified, pre-load data to this device (e.g., 'cuda')
-        """
-        # Store as float32 numpy arrays for memory efficiency
+        logger.info("Initializing UnivariateTSDataset")
         self.x = np.stack([w[0] for w in windows], axis=0).astype(np.float32)
         self.y = np.stack([w[1] for w in windows], axis=0).astype(np.float32)
 
-        # Optionally pre-load to GPU
         self.device = device
         if device:
+            logger.info("Preloading tensors to device: %s", device)
             self.x_tensor = torch.from_numpy(self.x).to(device)
             self.y_tensor = torch.from_numpy(self.y).to(device)
         else:
@@ -172,138 +179,99 @@ class UnivariateTSDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.device:
-            # Return pre-loaded GPU tensors if available
             return self.x_tensor[idx], self.y_tensor[idx]
         else:
-            # Otherwise convert to tensor on the fly with pin_memory
             return (torch.from_numpy(self.x[idx]), torch.from_numpy(self.y[idx]))
 
 
 class UnivariateTSDataModule(pl.LightningDataModule):
-    def __init__(
-        self,
-        df,
-        input_size,
-        horizon,
-        batch_size=32,
-        num_workers=8,  # Optimal for most systems
-        train_split=0.7,
-        val_split=0.15,
-        normalize=True,
-        scaler_type="minmax",
-        split_type="horizontal",
-        step_size=1,
-        pin_memory=True,  # Enable for GPU training
-        prefetch_factor=2,  # Prefetch batches to GPU
-        persistent_workers=True,  # Maintain workers between epochs
-        gpu_preload=False,  # Preload data to GPU if memory allows
-    ):
+    def __init__(self, df, input_size, horizon, batch_size=32, num_workers=8, train_split=0.7,
+                 val_split=0.15, normalize=True, scaler_type="minmax", split_type="horizontal",
+                 step_size=1, pin_memory=True, prefetch_factor=2, persistent_workers=True,
+                 gpu_preload=False, cache_dir=".", use_cache=True, persist_scaler=False,
+                 experiment_name="default_experiment"):
+        logger.info("Initializing UnivariateTSDataModule")
         super().__init__()
         self.save_hyperparameters(ignore=["df"])
-
         self.df = df
         self.input_size = input_size
         self.horizon = horizon
         self.batch_size = batch_size
-        self.num_workers = min(num_workers, torch.get_num_threads())  # Don't exceed system threads
+        self.num_workers = min(num_workers, torch.get_num_threads())
         self.train_split = train_split
         self.val_split = val_split
         self.normalize = normalize
         self.scaler_type = scaler_type
         self.split_type = split_type
         self.step_size = step_size
-        self.scalers = {}
         self.pin_memory = pin_memory
         self.prefetch_factor = prefetch_factor
         self.persistent_workers = persistent_workers
         self.gpu_preload = gpu_preload
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        # Validate splits
+        self.cache_dir = Path(cache_dir) / experiment_name
+        self.cache_dir.mkdir(exist_ok=True, parents=True)
+        self.use_cache = use_cache
+        self.persist_scaler = persist_scaler
+        self.experiment_name = experiment_name
+
+        self.scaler_dir = self.cache_dir / "scalers"
+        self.scaler_dir.mkdir(exist_ok=True, parents=True)
+
         if not 0 < train_split + val_split <= 1:
             raise ValueError("train_split + val_split must be between 0 and 1")
         if step_size < 1:
             raise ValueError("step_size must be >= 1")
 
     def _generate_windows(self, series):
-        """Vectorized window generation for better CPU utilization"""
+        logger.info("Generating windows from series")
         series_len = len(series)
         if series_len < self.input_size + self.horizon:
+            logger.warning("Series too short to generate any windows")
             return []
 
         max_idx = series_len - self.input_size - self.horizon + 1
         if max_idx <= 0:
             return []
 
-        # Create index ranges for vectorized operations
         window_starts = np.arange(0, max_idx, self.step_size, dtype=np.int32)
         window_ends = window_starts + self.input_size
         horizon_ends = window_ends + self.horizon
 
-        # Ensure we don't go out of bounds
         valid_windows = horizon_ends <= series_len
         window_starts = window_starts[valid_windows]
         window_ends = window_ends[valid_windows]
         horizon_ends = horizon_ends[valid_windows]
 
-        # Vectorized window creation
         x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=self.input_size)[
             window_starts
         ]
 
-        y_windows = np.stack(
-            [
-                series[window_end:horizon_end]
-                for window_end, horizon_end in zip(window_ends, horizon_ends)
-            ]
-        )
+        y_windows = np.stack([
+            series[window_end:horizon_end]
+            for window_end, horizon_end in zip(window_ends, horizon_ends)
+        ])
 
         return list(zip(x_windows, y_windows))
 
     def setup(self, stage=None):
-        # Process data in chunks to reduce memory usage
-        grouped = self.df.groupby("unique_id")
+        logger.info("Setting up the datamodule")
+        cache_file = self.cache_dir / "split_data.pt"
 
-        # Initialize lists to store windows
+        if self.use_cache and cache_file.exists():
+            logger.info("Loading dataset splits from cache")
+            data = torch.load(cache_file, weights_only=False)
+            self.train_dataset = data["train"]
+            self.val_dataset = data["val"]
+            self.test_dataset = data["test"]
+            return
+
+        grouped = self.df.groupby("unique_id")
         train_windows, val_windows, test_windows = [], [], []
 
-        # Process each series individually to minimize peak memory
-        for unique_id, group in grouped:
-            series = group["y"].values.astype(np.float32)
-
-            if self.normalize:
-                if self.scaler_type == "minmax":
-                    scaler = MinMaxScaler()
-                elif self.scaler_type == "standard":
-                    scaler = StandardScaler()
-                else:
-                    raise ValueError("scaler_type must be 'minmax' or 'standard'")
-
-                series = scaler.fit_transform(series.reshape(-1, 1)).flatten()
-                self.scalers[unique_id] = scaler
-
-            windows = self._generate_windows(series)
-            if not windows:
-                logger.warning(f"{unique_id} - Series too short for windowing")
-                continue
-
-            if self.split_type == "horizontal":
-                num_windows = len(windows)
-                train_end = int(num_windows * self.train_split)
-                val_end = train_end + int(num_windows * self.val_split)
-
-                train_windows.extend(windows[:train_end])
-                val_windows.extend(windows[train_end:val_end])
-                test_windows.extend(windows[val_end:])
-
-            elif self.split_type == "vertical":
-                # Vertical split handled in second pass below
-                pass
-            else:
-                raise ValueError("split_type must be 'horizontal' or 'vertical'")
-
-        # Handle vertical split if needed
         if self.split_type == "vertical":
+            logger.info("Applying vertical split")
             unique_ids = list(grouped.groups.keys())
             np.random.shuffle(unique_ids)
             total_series = len(unique_ids)
@@ -314,60 +282,118 @@ class UnivariateTSDataModule(pl.LightningDataModule):
             val_ids = unique_ids[train_end:val_end]
             test_ids = unique_ids[val_end:]
 
-            # Second pass for vertical split
-            for unique_id, group in grouped:
-                if unique_id not in self.scalers:  # Skip if already processed
-                    series = group["y"].values.astype(np.float32)
-                    windows = self._generate_windows(series)
-                    if not windows:
-                        continue
+        for unique_id, group in grouped:
+            logger.info(f"Processing unique_id: {unique_id}")
+            series = group["y"].values.astype(np.float32)
 
+            if self.normalize:
+                scaler_file = self.scaler_dir / f"{unique_id}_scaler.pkl"
+                if self.persist_scaler and scaler_file.exists():
+                    logger.info(f"Loading scaler for {unique_id}")
+                    with open(scaler_file, "rb") as f:
+                        scaler = pickle.load(f)
+
+                    series = scaler.transform(series.reshape(-1, 1)).flatten()
+
+                else:
+                    if self.scaler_type == "minmax":
+                        scaler = MinMaxScaler()
+                    elif self.scaler_type == "standard":
+                        scaler = StandardScaler()
+                    else:
+                        raise ValueError("scaler_type must be 'minmax' or 'standard'")
+
+                    series = scaler.fit_transform(series.reshape(-1, 1)).flatten()
+                    if self.persist_scaler:
+                        logger.info(f"Saving scaler for {unique_id}")
+                        with open(scaler_file, "wb") as f:
+                            pickle.dump(scaler, f)
+
+            windows = self._generate_windows(series)
+            if not windows:
+                logger.warning(f"{unique_id} - Series too short for windowing")
+                continue
+
+            if self.split_type == "horizontal":
+                num_windows = len(windows)
+                train_end = int(num_windows * self.train_split)
+                val_end = train_end + int(num_windows * self.val_split)
+                train_windows.extend(windows[:train_end])
+                val_windows.extend(windows[train_end:val_end])
+                test_windows.extend(windows[val_end:])
+            elif self.split_type == "vertical":
                 if unique_id in train_ids:
                     train_windows.extend(windows)
                 elif unique_id in val_ids:
                     val_windows.extend(windows)
                 elif unique_id in test_ids:
                     test_windows.extend(windows)
+            else:
+                raise ValueError("split_type must be 'horizontal' or 'vertical'")
 
-        # Create datasets with optional GPU pre-loading
-        self.train_dataset = UnivariateTSDataset(
-            train_windows, device=self.device if self.gpu_preload else None
-        )
-        self.val_dataset = UnivariateTSDataset(
-            val_windows, device=self.device if self.gpu_preload else None
-        )
-        self.test_dataset = UnivariateTSDataset(
-            test_windows, device=self.device if self.gpu_preload else None
-        )
+        print(train_windows)
+        logger.info("Creating dataset objects")
+        self.train_dataset = UnivariateTSDataset(train_windows, device=self.device if self.gpu_preload else None)
+        self.val_dataset = UnivariateTSDataset(val_windows, device=self.device if self.gpu_preload else None)
+        self.test_dataset = UnivariateTSDataset(test_windows, device=self.device if self.gpu_preload else None)
 
         logger.info(
-            f"Train windows: {len(self.train_dataset)}, "
-            f"Val windows: {len(self.val_dataset)}, "
-            f"Test windows: {len(self.test_dataset)}"
+            f"Train windows: {len(self.train_dataset)}, Val windows: {len(self.val_dataset)}, Test windows: {len(self.test_dataset)}"
         )
 
+        if self.use_cache and not cache_file.exists():
+            logger.info("Saving dataset splits to cache")
+            torch.save({"train": self.train_dataset, "val": self.val_dataset, "test": self.test_dataset}, cache_file)
+
+        logger.info("Cleaning up original dataframe")
+        # del self.df
+        gc.collect()
+
     def _create_dataloader(self, dataset, shuffle=False):
+        logger.info("Creating dataloader")
         return DataLoader(
             dataset,
             batch_size=self.batch_size,
             shuffle=shuffle,
             num_workers=self.num_workers,
-            pin_memory=self.pin_memory and not self.gpu_preload,  # No need if preloaded
+            pin_memory=self.pin_memory and not self.gpu_preload,
             prefetch_factor=self.prefetch_factor,
             persistent_workers=self.persistent_workers,
-            drop_last=shuffle,  # Drop last batch only for training
+            drop_last=shuffle,
         )
 
     def train_dataloader(self):
+        logger.info("Getting train dataloader")
         return self._create_dataloader(self.train_dataset, shuffle=True)
 
     def val_dataloader(self):
+        logger.info("Getting val dataloader")
         return self._create_dataloader(self.val_dataset)
 
     def test_dataloader(self):
+        logger.info("Getting test dataloader")
         return self._create_dataloader(self.test_dataset)
 
     def inverse_transform(self, data, unique_id):
-        if self.normalize and unique_id in self.scalers:
-            return self.scalers[unique_id].inverse_transform(data.reshape(-1, 1)).flatten()
+        logger.info(f"Inverse transforming data for unique_id: {unique_id}")
+        scaler_file = self.scaler_dir / f"{unique_id}_scaler.pkl"
+        if scaler_file.exists():
+            with open(scaler_file, "rb") as f:
+                scaler = pickle.load(f)
+            return scaler.inverse_transform(data.reshape(-1, 1)).flatten()
+        logger.warning(f"Scaler for {unique_id} not found. Returning original data.")
         return data
+
+    def pre_prediction_transform(self, series: np.ndarray, unique_id: str) -> np.ndarray:
+
+        scaler_file = self.scaler_dir / f"{unique_id}_scaler.pkl"
+        if scaler_file.exists():
+            with open(scaler_file, "rb") as f:
+                scaler = pickle.load(f)
+            return scaler.transform(series.reshape(-1, 1)).flatten()
+        logger.warning(f"Scaler for {unique_id} not found. Returning original series.")
+        return series
+
+    def post_prediction_transform(self, prediction: np.ndarray, unique_id: str) -> np.ndarray:
+
+        return self.inverse_transform(prediction, unique_id)

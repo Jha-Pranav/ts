@@ -5,9 +5,10 @@ __all__ = ['batch_size', 'num_workers', 'step_size', 'ds', 'wandb_logger', 'prof
 
 # %% ../../nbs/training/training.nbeats.ipynb 8
 import torch
-from ..preprocess.dataloader import UnivariateTSDataModule
 
 # %% ../../nbs/training/training.nbeats.ipynb 9
+from ..preprocess.dataloader import UnivariateTSDataModule
+
 batch_size = 512 * 10
 num_workers = 24
 step_size = 6
@@ -35,6 +36,7 @@ from pytorch_lightning.loggers import TensorBoardLogger
 # %% ../../nbs/training/training.nbeats.ipynb 11
 # Example trainer setup (without full NBeatsG for brevity)
 from lightning.pytorch.loggers import WandbLogger
+
 wandb_logger = WandbLogger(
     project="shortterm-ts-global-forecast",
     name=f"model=NBeatsG.ds=M5",
@@ -61,10 +63,11 @@ trainer = pl.Trainer(
 )
 
 
-trainer.fit(model, ds, ckpt_path="SHORT-TERM-FORECAST-MODEL(60-12).ckpt")
+# trainer.fit(model, ds,)
 
 # %% ../../nbs/training/training.nbeats.ipynb 12
-trainer.test(model, ds);
+trainer.test(model, ds)
+wandb.finish()
 
 # %% ../../nbs/training/training.nbeats.ipynb 14
-trainer.save_checkpoint("SHORT-TERM-FORECAST-MODEL(60-12).ckpt")
+# trainer.save_checkpoint("SHORT-TERM-FORECAST-MODEL-NBEATSG(60-12).ckpt")
