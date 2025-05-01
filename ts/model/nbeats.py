@@ -10,7 +10,7 @@ import pytorch_lightning as pl
 import torch
 import torch.nn as nn
 from torch.optim import Adam
-from torch.optim.lr_scheduler import ReduceLROnPlateau
+from torch.optim.lr_scheduler import ReduceLROnPlateau, CosineAnnealingLR
 from torch.utils.data import DataLoader, Dataset
 from torchmetrics import SymmetricMeanAbsolutePercentageError
 
@@ -156,13 +156,5 @@ class NBeatsG(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = Adam(self.parameters(), lr=self.lr)
-        scheduler = ReduceLROnPlateau(optimizer, mode="min", factor=0.5, patience=5, verbose=True)
-        return {
-            "optimizer": optimizer,
-            "lr_scheduler": {
-                "scheduler": scheduler,
-                "monitor": "val_loss",  # Reduce LR based on validation loss
-                "interval": "epoch",
-                "frequency": 1,
-            },
-        }
+        scheduler = CosineAnnealingLR(optimizer, T_max=10, eta_min=1e-6)
+        return [optimizer], [{"scheduler": scheduler, "interval": "epoch"}]

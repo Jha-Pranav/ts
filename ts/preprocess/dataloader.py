@@ -4,21 +4,13 @@
 __all__ = ['logger', 'device', 'TSRegressionDataset', 'TSDataLoader', 'UnivariateTSDataset', 'UnivariateTSDataModule']
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 1
+from typing import Optional
 import numpy as np
 import pytorch_lightning as pl
 import torch
-from sklearn.preprocessing import MinMaxScaler
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
 
-import torch
-import numpy as np
-import pytorch_lightning as pl
-from torch.utils.data import Dataset, DataLoader
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-import logging
-from typing import Optional
-
-logger = logging.getLogger(__name__)
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 2
 import logging
@@ -184,10 +176,7 @@ class UnivariateTSDataset(Dataset):
             return self.x_tensor[idx], self.y_tensor[idx]
         else:
             # Otherwise convert to tensor on the fly with pin_memory
-            return (
-                torch.from_numpy(self.x[idx]),
-                torch.from_numpy(self.y[idx])
-            )
+            return (torch.from_numpy(self.x[idx]), torch.from_numpy(self.y[idx]))
 
 
 class UnivariateTSDataModule(pl.LightningDataModule):
@@ -210,7 +199,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         gpu_preload=False,  # Preload data to GPU if memory allows
     ):
         super().__init__()
-        self.save_hyperparameters(ignore=['df'])
+        self.save_hyperparameters(ignore=["df"])
 
         self.df = df
         self.input_size = input_size
@@ -228,7 +217,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         self.prefetch_factor = prefetch_factor
         self.persistent_workers = persistent_workers
         self.gpu_preload = gpu_preload
-        self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
         # Validate splits
         if not 0 < train_split + val_split <= 1:
@@ -258,14 +247,16 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         horizon_ends = horizon_ends[valid_windows]
 
         # Vectorized window creation
-        x_windows = np.lib.stride_tricks.sliding_window_view(
-            series, window_shape=self.input_size
-        )[window_starts]
+        x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=self.input_size)[
+            window_starts
+        ]
 
-        y_windows = np.stack([
-            series[window_end:horizon_end]
-            for window_end, horizon_end in zip(window_ends, horizon_ends)
-        ])
+        y_windows = np.stack(
+            [
+                series[window_end:horizon_end]
+                for window_end, horizon_end in zip(window_ends, horizon_ends)
+            ]
+        )
 
         return list(zip(x_windows, y_windows))
 
@@ -340,16 +331,13 @@ class UnivariateTSDataModule(pl.LightningDataModule):
 
         # Create datasets with optional GPU pre-loading
         self.train_dataset = UnivariateTSDataset(
-            train_windows,
-            device=self.device if self.gpu_preload else None
+            train_windows, device=self.device if self.gpu_preload else None
         )
         self.val_dataset = UnivariateTSDataset(
-            val_windows,
-            device=self.device if self.gpu_preload else None
+            val_windows, device=self.device if self.gpu_preload else None
         )
         self.test_dataset = UnivariateTSDataset(
-            test_windows,
-            device=self.device if self.gpu_preload else None
+            test_windows, device=self.device if self.gpu_preload else None
         )
 
         logger.info(

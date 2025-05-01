@@ -16,6 +16,7 @@ _proc
 *.pt
 *.npy
 *.png
+lab/
 
 # tensorboard related files
 hparams.yaml

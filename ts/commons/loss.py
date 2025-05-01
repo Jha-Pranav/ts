@@ -35,7 +35,7 @@ class MASE(Metric):
     def compute(self):
         if self.naive_error < 1e-8:
             return torch.tensor(float("inf"), device=self.forecast_error.device)
-        return self.forecast_error / self.naive_error
+        return self.forecast_error / self.naive_error /self.num_samples
 
 # %% ../../nbs/commons/commons.loss.ipynb 3
 # Custom OWA Metric
