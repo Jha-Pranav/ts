@@ -4,25 +4,20 @@
 __all__ = ['logger', 'device', 'TSRegressionDataset', 'TSDataLoader', 'UnivariateTSDataset', 'UnivariateTSDataModule']
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 1
+import gc
+
+# from torch.serialization import safe_globals
+import os
+import pickle
+from pathlib import Path
 from typing import Optional
 
 import numpy as np
+import pandas as pd
 import pytorch_lightning as pl
 import torch
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
-# from torch.serialization import safe_globals
-import os
-import pickle
-import gc
-from pathlib import Path
-import torch
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from torch.utils.data import Dataset, DataLoader
-import pytorch_lightning as pl
-
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 2
 import logging
@@ -185,11 +180,28 @@ class UnivariateTSDataset(Dataset):
 
 
 class UnivariateTSDataModule(pl.LightningDataModule):
-    def __init__(self, df, input_size, horizon, batch_size=32, num_workers=8, train_split=0.7,
-                 val_split=0.15, normalize=True, scaler_type="minmax", split_type="horizontal",
-                 step_size=1, pin_memory=True, prefetch_factor=2, persistent_workers=True,
-                 gpu_preload=False, cache_dir=".", use_cache=True, persist_scaler=False,
-                 experiment_name="default_experiment"):
+    def __init__(
+        self,
+        df,
+        input_size,
+        horizon,
+        batch_size=32,
+        num_workers=8,
+        train_split=0.7,
+        val_split=0.15,
+        normalize=True,
+        scaler_type="minmax",
+        split_type="horizontal",
+        step_size=1,
+        pin_memory=True,
+        prefetch_factor=2,
+        persistent_workers=True,
+        gpu_preload=False,
+        cache_dir=".",
+        use_cache=True,
+        persist_scaler=False,
+        experiment_name="default_experiment",
+    ):
         logger.info("Initializing UnivariateTSDataModule")
         super().__init__()
         self.save_hyperparameters(ignore=["df"])
@@ -248,10 +260,12 @@ class UnivariateTSDataModule(pl.LightningDataModule):
             window_starts
         ]
 
-        y_windows = np.stack([
-            series[window_end:horizon_end]
-            for window_end, horizon_end in zip(window_ends, horizon_ends)
-        ])
+        y_windows = np.stack(
+            [
+                series[window_end:horizon_end]
+                for window_end, horizon_end in zip(window_ends, horizon_ends)
+            ]
+        )
 
         return list(zip(x_windows, y_windows))
 
@@ -333,9 +347,15 @@ class UnivariateTSDataModule(pl.LightningDataModule):
 
         print(train_windows)
         logger.info("Creating dataset objects")
-        self.train_dataset = UnivariateTSDataset(train_windows, device=self.device if self.gpu_preload else None)
-        self.val_dataset = UnivariateTSDataset(val_windows, device=self.device if self.gpu_preload else None)
-        self.test_dataset = UnivariateTSDataset(test_windows, device=self.device if self.gpu_preload else None)
+        self.train_dataset = UnivariateTSDataset(
+            train_windows, device=self.device if self.gpu_preload else None
+        )
+        self.val_dataset = UnivariateTSDataset(
+            val_windows, device=self.device if self.gpu_preload else None
+        )
+        self.test_dataset = UnivariateTSDataset(
+            test_windows, device=self.device if self.gpu_preload else None
+        )
 
         logger.info(
             f"Train windows: {len(self.train_dataset)}, Val windows: {len(self.val_dataset)}, Test windows: {len(self.test_dataset)}"
@@ -343,7 +363,10 @@ class UnivariateTSDataModule(pl.LightningDataModule):
 
         if self.use_cache and not cache_file.exists():
             logger.info("Saving dataset splits to cache")
-            torch.save({"train": self.train_dataset, "val": self.val_dataset, "test": self.test_dataset}, cache_file)
+            torch.save(
+                {"train": self.train_dataset, "val": self.val_dataset, "test": self.test_dataset},
+                cache_file,
+            )
 
         logger.info("Cleaning up original dataframe")
         # del self.df
@@ -383,6 +406,14 @@ class UnivariateTSDataModule(pl.LightningDataModule):
             return scaler.inverse_transform(data.reshape(-1, 1)).flatten()
         logger.warning(f"Scaler for {unique_id} not found. Returning original data.")
         return data
+
+    def _load_all_scalers(self):
+        scaler_map = {}
+        for file in self.scaler_dir.glob("*_scaler.pkl"):
+            uid = file.stem.replace("_scaler", "")
+            with open(file, "rb") as f:
+                scaler_map[uid] = pickle.load(f)
+        return scaler_map
 
     def pre_prediction_transform(self, series: np.ndarray, unique_id: str) -> np.ndarray:
 

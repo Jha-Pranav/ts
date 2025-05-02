@@ -199,6 +199,15 @@ wheels = [
 ]
 
 [[package]]
+name = "ansicolors"
+version = "1.1.8"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/76/31/7faed52088732704523c259e24c26ce6f2f33fbeff2ff59274560c27628e/ansicolors-1.1.8.zip", hash = "sha256:99f94f5e3348a0bcd43c82e5fc4414013ccc19d70bd939ad71e0133ce9c372e0", size = 23027 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/53/18/a56e2fe47b259bb52201093a3a9d4a32014f9d85071ad07e9d60600890ca/ansicolors-1.1.8-py2.py3-none-any.whl", hash = "sha256:00d2dde5a675579325902536738dd27e4fac1fd68f773fe36c21044eb559e187", size = 13847 },
+]
+
+[[package]]
 name = "anthropic"
 version = "0.49.0"
 source = { registry = "https://pypi.org/simple" }
@@ -355,8 +364,10 @@ dependencies = [
     { name = "datasetsforecast" },
     { name = "fastparquet" },
     { name = "lightning" },
+    { name = "metaflow" },
     { name = "neuralforecast" },
     { name = "pandas" },
+    { name = "papermill" },
     { name = "plotly" },
     { name = "pyts" },
     { name = "scikit-learn" },
@@ -399,8 +410,10 @@ requires-dist = [
     { name = "datasetsforecast", specifier = "==0.0.8" },
     { name = "fastparquet", specifier = ">=2024.11.0" },
     { name = "lightning", specifier = ">=2.5.0.post0" },
+    { name = "metaflow", specifier = ">=2.15.10" },
     { name = "neuralforecast", specifier = ">=3.0.0" },
     { name = "pandas", specifier = ">=2.2.3" },
+    { name = "papermill", specifier = ">=2.6.0" },
     { name = "plotly", specifier = ">=6.0.0" },
     { name = "pyts", specifier = ">=0.13.0" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
@@ -1006,6 +1019,15 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/c5/e6/d1f6c00b7221e2d7c4b470132c931325c8b22c51ca62417e300f5ce16009/docker-pycreds-0.4.0.tar.gz", hash = "sha256:6ce3270bcaf404cc4c3e27e4b6c70d3521deae82fb508767870fdbf772d584d4", size = 8754 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/f5/e8/f6bd1eee09314e7e6dee49cbe2c5e22314ccdb38db16c9fc72d2fa80d054/docker_pycreds-0.4.0-py2.py3-none-any.whl", hash = "sha256:7266112468627868005106ec19cd0d722702d2b7d5912a28e19b826c3d37af49", size = 8982 },
+]
+
+[[package]]
+name = "entrypoints"
+version = "0.4"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/ea/8d/a7121ffe5f402dc015277d2d31eb82d2187334503a011c18f2e78ecbb9b2/entrypoints-0.4.tar.gz", hash = "sha256:b706eddaa9218a19ebcd67b56818f05bb27589b1ca9e8d797b74affad4ccacd4", size = 13974 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/35/a8/365059bbcd4572cbc41de17fd5b682be5868b218c3c5479071865cab9078/entrypoints-0.4-py3-none-any.whl", hash = "sha256:f174b5ff827504fd3cd97cc3f8649f3693f51538c7e4bdf3ef002c8429d42f9f", size = 5294 },
 ]
 
 [[package]]
@@ -2589,6 +2611,19 @@ wheels = [
 ]
 
 [[package]]
+name = "metaflow"
+version = "2.15.10"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "boto3" },
+    { name = "requests" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/89/b2/28c4e9dd28f3d532e0b7e634da62fa9ac996b6abfd78eadff2bf79a2a20c/metaflow-2.15.10.tar.gz", hash = "sha256:ed88611cdcde2ab5fb22f3b0419d5d7d429a486cf9791441646d416fa945137b", size = 1432605 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/07/e1/7a7e5d2a3f2ddb2f0d442d11c20b6be360fdf8591a56d5f3b5688a4eed10/metaflow-2.15.10-py2.py3-none-any.whl", hash = "sha256:366ddd6cd5d78a50f5920b7a0d008db2b354addc459d5f4cd731634e8d9b9947", size = 1598109 },
+]
+
+[[package]]
 name = "mistune"
 version = "3.1.3"
 source = { registry = "https://pypi.org/simple" }
@@ -3247,6 +3282,27 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/70/6f/3dd4940bbe001c06a65f88e36bad298bc7a0de5036115639926b0c5c0458/pandocfilters-1.5.1.tar.gz", hash = "sha256:002b4a555ee4ebc03f8b66307e287fa492e4a77b4ea14d3f934328297bb4939e", size = 8454 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ef/af/4fbc8cab944db5d21b7e2a5b8e9211a03a79852b1157e2c102fcc61ac440/pandocfilters-1.5.1-py2.py3-none-any.whl", hash = "sha256:93be382804a9cdb0a7267585f157e5d1731bbe5545a85b268d6f5fe6232de2bc", size = 8663 },
+]
+
+[[package]]
+name = "papermill"
+version = "2.6.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "aiohttp", marker = "python_full_version < '3.13'" },
+    { name = "ansicolors" },
+    { name = "click" },
+    { name = "entrypoints" },
+    { name = "nbclient" },
+    { name = "nbformat" },
+    { name = "pyyaml" },
+    { name = "requests" },
+    { name = "tenacity" },
+    { name = "tqdm" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/99/8d/d843b1739b966d47dae02eb9b705713d810e5b283ea7ad24bf9b3b6bf99e/papermill-2.6.0.tar.gz", hash = "sha256:9fe2a91912fd578f391b4cc8d6d105e73124dcd0cde2a43c3c4a1c77ac88ea24", size = 78342 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/61/55/83ce641bc61a70cc0721af6f50154ecaaccedfbdbc27366c1755a2a34972/papermill-2.6.0-py3-none-any.whl", hash = "sha256:0f09da6ef709f3f14dde77cb1af052d05b14019189869affff374c9e612f2dd5", size = 38564 },
 ]
 
 [[package]]
