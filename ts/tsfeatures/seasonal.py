@@ -12,6 +12,8 @@ from scipy import fftpack
 from sklearn.linear_model import LinearRegression
 
 # Function to perform FFT analysis and return results
+
+
 def perform_fft_analysis(df, column_name):
     # Extract series
     y = df[column_name].values
@@ -55,10 +57,13 @@ def perform_fft_analysis(df, column_name):
         "dominant_period": dominant_period,
         "dominant_freq": dominant_freq,
         "dominant_mag": dominant_mag,
-        "trend": trend
+        "trend": trend,
     }
 
+
 # Function to plot FFT analysis results
+
+
 def plot_fft_results(fft_results):
     y = fft_results["y"]
     y_detrended = fft_results["y_detrended"]
@@ -86,7 +91,9 @@ def plot_fft_results(fft_results):
 
     # Original time series
     fig.add_trace(
-        go.Scatter(x=np.arange(len(y)), y=y, mode="lines", name="Original", line=dict(color="blue")),
+        go.Scatter(
+            x=np.arange(len(y)), y=y, mode="lines", name="Original", line=dict(color="blue")
+        ),
         row=1,
         col=1,
     )
@@ -94,13 +101,19 @@ def plot_fft_results(fft_results):
     # Detrended time series
     fig.add_trace(
         go.Scatter(
-            x=np.arange(len(y_detrended)), y=y_detrended, mode="lines", name="Detrended", line=dict(color="blue")
+            x=np.arange(len(y_detrended)),
+            y=y_detrended,
+            mode="lines",
+            name="Detrended",
+            line=dict(color="blue"),
         ),
         row=1,
         col=2,
     )
     fig.add_trace(
-        go.Scatter(x=np.arange(len(trend)), y=trend, mode="lines", name="Trend", line=dict(color="blue")),
+        go.Scatter(
+            x=np.arange(len(trend)), y=trend, mode="lines", name="Trend", line=dict(color="blue")
+        ),
         row=1,
         col=1,
     )
@@ -167,6 +180,7 @@ def plot_fft_results(fft_results):
     fig.update_yaxes(title_text="Magnitude", row=2, col=2)
 
     fig.show()
+
 
 # # Example usage:
 

@@ -374,6 +374,7 @@ dependencies = [
     { name = "sktime" },
     { name = "statsforecast" },
     { name = "statsmodels" },
+    { name = "stumpy" },
     { name = "tensorboard" },
     { name = "torch" },
     { name = "torchvision" },
@@ -421,6 +422,7 @@ requires-dist = [
     { name = "statsforecast", specifier = ">=2.0.1" },
     { name = "statsmodels", specifier = ">=0.14.4" },
     { name = "streamlit", marker = "extra == 'seaborn'", specifier = ">=1.43.1" },
+    { name = "stumpy", specifier = ">=1.13.0" },
     { name = "tensorboard", specifier = ">=2.19.0" },
     { name = "tensorboard", marker = "extra == 'seaborn'", specifier = ">=2.19.0" },
     { name = "torch", specifier = ">=2.6.0" },
@@ -4576,6 +4578,20 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b4/86/764e2079c58790f232bb5882853fe8a68302dfdd0e29a5cf6efeb3bbcd17/streamlit-1.44.0.tar.gz", hash = "sha256:da75933bae94595167f43822dea43fcdde0d747433f7d04989266d78967951bb", size = 9422437 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/46/9e/e51e34f504940da00145795b9e8be9c129704708b071f672f3626a37d842/streamlit-1.44.0-py3-none-any.whl", hash = "sha256:98510d03e53622bba8f0e9f2fd4f1191b3b55e5c7e55abbbaa0289cb9e21cdea", size = 9812034 },
+]
+
+[[package]]
+name = "stumpy"
+version = "1.13.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numba" },
+    { name = "numpy" },
+    { name = "scipy" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3f/53/0f259d2fbfaf3a141f8a40631d99452c1ff69fc5e41fba7a96c81c88cb18/stumpy-1.13.0.tar.gz", hash = "sha256:f29d3da980412150e7b029ab0cd8e7b132adcbf1c66ef7a4d35d564808bfba8a", size = 578788 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/43/0f/305bc39f513eb7cb6406f1cd445f58f2b260526693afbe900dc6e9802410/stumpy-1.13.0-py3-none-any.whl", hash = "sha256:c61b04402a328266009a9c0f63f739a28c708bf974d8c64efdf571e688a5c67a", size = 176533 },
 ]
 
 [[package]]

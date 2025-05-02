@@ -185,6 +185,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         df,
         input_size,
         horizon,
+        target_col='y',
         batch_size=32,
         num_workers=8,
         train_split=0.7,
@@ -208,6 +209,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
         self.df = df
         self.input_size = input_size
         self.horizon = horizon
+        self.target_col = target_col
         self.batch_size = batch_size
         self.num_workers = min(num_workers, torch.get_num_threads())
         self.train_split = train_split
@@ -298,7 +300,7 @@ class UnivariateTSDataModule(pl.LightningDataModule):
 
         for unique_id, group in grouped:
             logger.info(f"Processing unique_id: {unique_id}")
-            series = group["y"].values.astype(np.float32)
+            series = group[self.target_col].values.astype(np.float32)
 
             if self.normalize:
                 scaler_file = self.scaler_dir / f"{unique_id}_scaler.pkl"
