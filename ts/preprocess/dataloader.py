@@ -154,8 +154,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
-
-
 import torch
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
@@ -269,7 +267,7 @@ class TSPreprocessor:
             val_end = train_end + int(num_windows * self.val_split)
             return (windows[:train_end], windows[train_end:val_end], windows[val_end:], unique_id)
         else:  # Vertical split
-            return windows, _, _, unique_id
+            return windows, [] , [], unique_id
 
     def _process_data(self):
         logger.info("Processing data for all unique_ids")
