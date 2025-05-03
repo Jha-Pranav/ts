@@ -242,7 +242,6 @@ class TSPreprocessor:
 
         return list(zip(x_windows, y_windows))
 
-
     def _process_one_series(self, unique_id_group):
         unique_id, group = unique_id_group
         series = group[self.target_col].values.astype(np.float32)
@@ -261,7 +260,7 @@ class TSPreprocessor:
                         pickle.dump(scaler, f)
 
         windows = self._generate_windows(series)
-        # del series
+        del series
         # gc.collect()
 
         if not windows:
@@ -370,7 +369,6 @@ class TSPreprocessor:
 
     def post_prediction_transform(self, prediction: np.ndarray, unique_id: str) -> np.ndarray:
         return self.inverse_transform(prediction, unique_id)
-
 
 # %% ../../nbs/utils/preprocess.dataloader.ipynb 9
 class UnivariateTSDataset(Dataset):
