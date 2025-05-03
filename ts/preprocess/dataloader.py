@@ -207,10 +207,13 @@ class TSPreprocessor:
 
         self.train_windows, self.val_windows, self.test_windows = self._process_data()
 
+        # 🧹 RAM Cleanup: Free original dataframe after processing
+        del self.df
+        gc.collect()
+
     def _generate_windows(self, series):
         series_len = len(series)
         if series_len < self.input_size + self.horizon:
-
             return []
 
         max_idx = series_len - self.input_size - self.horizon + 1
@@ -239,6 +242,7 @@ class TSPreprocessor:
 
         return list(zip(x_windows, y_windows))
 
+
     def _process_one_series(self, unique_id_group):
         unique_id, group = unique_id_group
         series = group[self.target_col].values.astype(np.float32)
@@ -257,6 +261,9 @@ class TSPreprocessor:
                         pickle.dump(scaler, f)
 
         windows = self._generate_windows(series)
+        # del series
+        # gc.collect()
+
         if not windows:
             logger.warning(f"[{unique_id}] Series too short to generate any windows")
             return [], [], [], unique_id
@@ -266,8 +273,8 @@ class TSPreprocessor:
             train_end = int(num_windows * self.train_split)
             val_end = train_end + int(num_windows * self.val_split)
             return (windows[:train_end], windows[train_end:val_end], windows[val_end:], unique_id)
-        else:  # Vertical split
-            return windows, [] , [], unique_id
+        else:
+            return windows, [], [], unique_id
 
     def _process_data(self):
         logger.info("Processing data for all unique_ids")
@@ -277,7 +284,11 @@ class TSPreprocessor:
             logger.info("Loading preprocessed windows from cache")
             with open(cache_file, "rb") as f:
                 data = pickle.load(f)
-            return data["train_windows"], data["val_windows"], data["test_windows"]
+            return (
+                np.array(data["train_windows"], dtype=object),
+                np.array(data["val_windows"], dtype=object),
+                np.array(data["test_windows"], dtype=object),
+            )
 
         grouped = list(self.df.groupby("unique_id"))
         train_windows, val_windows, test_windows = [], [], []
@@ -293,7 +304,6 @@ class TSPreprocessor:
             train_ids = unique_ids[:train_end]
             val_ids = unique_ids[train_end:val_end]
             test_ids = unique_ids[val_end:]
-            # print("val_ids",val_ids,"test_ids",test_ids)
 
         with ThreadPoolExecutor(max_workers=self.num_workers) as executor:
             results = list(
@@ -309,14 +319,18 @@ class TSPreprocessor:
                 train_windows.extend(train_w)
                 val_windows.extend(val_w)
                 test_windows.extend(test_w)
-            else:  # Vertical split
-
+            else:
                 if unique_id in train_ids:
                     train_windows.extend(train_w)
                 elif unique_id in val_ids:
                     val_windows.extend(train_w)
                 elif unique_id in test_ids:
                     test_windows.extend(train_w)
+
+        # ✨ Convert lists to numpy arrays
+        train_windows = np.array(train_windows, dtype=object)
+        val_windows = np.array(val_windows, dtype=object)
+        test_windows = np.array(test_windows, dtype=object)
 
         if self.use_cache:
             logger.info("Saving preprocessed windows to cache")
@@ -333,7 +347,6 @@ class TSPreprocessor:
         logger.info(
             f"Train windows: {len(train_windows)}, Val windows: {len(val_windows)}, Test windows: {len(test_windows)}"
         )
-        del self.df
         return train_windows, val_windows, test_windows
 
     def inverse_transform(self, data, unique_id):
@@ -359,6 +372,7 @@ class TSPreprocessor:
         return self.inverse_transform(prediction, unique_id)
 
 
+# %% ../../nbs/utils/preprocess.dataloader.ipynb 9
 class UnivariateTSDataset(Dataset):
     def __init__(self, windows, device: str = None):
         logger.info("Initializing UnivariateTSDataset")
