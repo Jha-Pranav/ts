@@ -5,44 +5,27 @@ __all__ = ['logger', 'device', 'TSPreprocessor', 'UnivariateTSDataset', 'Univari
 
 # %% ../../../nbs/utils/preprocess.bigdata.dataloader.ipynb 1
 import gc
-# from torch.serialization import safe_globals
+import logging
 import os
 import pickle
 from pathlib import Path
 from typing import Optional
 
-import numpy as np
-import pandas as pd
-import pytorch_lightning as pl
-import torch
-from sklearn.preprocessing import MinMaxScaler, StandardScaler
-from torch.utils.data import DataLoader, Dataset
-
-# %% ../../../nbs/utils/preprocess.bigdata.dataloader.ipynb 2
-import logging
-import warnings
-# Configure logging
-logging.basicConfig(level=logging.ERROR)  # Change to DEBUG for more details
-
-logger = logging.getLogger(__name__)
-
-# %% ../../../nbs/utils/preprocess.bigdata.dataloader.ipynb 3
-device = "cuda" if torch.cuda.is_available() else "cpu"
-torch._dynamo.config.suppress_errors = True
-
-# %% ../../../nbs/utils/preprocess.bigdata.dataloader.ipynb 4
-import gc
-import os
-import pickle
-from pathlib import Path
 import h5py
 import numpy as np
 import pandas as pd
 import pytorch_lightning as pl
+import ray
 import torch
+from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from torch.utils.data import DataLoader, Dataset
 from tqdm.notebook import tqdm
-import ray
+
+logger = logging.getLogger(__name__)
+
+device = "cuda" if torch.cuda.is_available() else "cpu"
+torch._dynamo.config.suppress_errors = True
+
 
 class TSPreprocessor:
     def __init__(
@@ -106,6 +89,14 @@ class TSPreprocessor:
 
         self.train_windows, self.val_windows, self.test_windows = self._process_data()
 
+        if len(self.train_windows) == 0:
+            logger.error(
+                "No training windows generated. Check input_size, horizon, or data lengths."
+            )
+            raise ValueError(
+                "Training dataset is empty. Ensure series lengths are sufficient for input_size + horizon."
+            )
+
         del self.df
         gc.collect()
 
@@ -127,20 +118,37 @@ class TSPreprocessor:
         window_ends = window_ends[valid_windows]
         horizon_ends = horizon_ends[valid_windows]
 
-        x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=self.input_size)[window_starts]
+        x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=self.input_size)[
+            window_starts
+        ]
         y_windows = np.stack([series[we:he] for we, he in zip(window_ends, horizon_ends)])
 
         return list(zip(x_windows, y_windows))
 
     @staticmethod
-    def _generate_windows_optimized(series, unique_id, split, window_buffer=None, chunk_size=None, input_size=None, horizon=None, step_size=None, adaptive_step=False, cache_dir=None):
+    def _generate_windows_optimized(
+        series,
+        unique_id,
+        split,
+        window_buffer=None,
+        chunk_size=None,
+        input_size=None,
+        horizon=None,
+        step_size=None,
+        adaptive_step=False,
+        cache_dir=None,
+    ):
         series_len = len(series)
         if series_len < input_size + horizon:
-            return window_buffer
+            logger.debug(
+                f"[{unique_id}] Skipping series for {split} split (length={series_len} < {input_size + horizon})"
+            )
+            return []
 
         max_idx = series_len - input_size - horizon + 1
         if max_idx <= 0:
-            return window_buffer
+            logger.debug(f"[{unique_id}] No valid windows for {split} split (max_idx={max_idx})")
+            return []
 
         step_size = step_size
         if adaptive_step:
@@ -148,9 +156,32 @@ class TSPreprocessor:
 
         chunk_size = chunk_size or max(100, min(1000, series_len // 10))
 
-        if window_buffer is not None:
-            if not isinstance(window_buffer, list):
-                window_buffer = list(window_buffer)
+        h5_file = Path(cache_dir) / f"{unique_id}_{split}.h5"
+        window_count = 0
+        with h5py.File(h5_file, "a") as f:
+            x_dset = (
+                f["x"]
+                if "x" in f
+                else f.create_dataset(
+                    "x",
+                    shape=(0, input_size),
+                    maxshape=(None, input_size),
+                    dtype=np.float32,
+                    compression="lzf",
+                )
+            )
+            y_dset = (
+                f["y"]
+                if "y" in f
+                else f.create_dataset(
+                    "y",
+                    shape=(0, horizon),
+                    maxshape=(None, horizon),
+                    dtype=np.float32,
+                    compression="lzf",
+                )
+            )
+
             for start in range(0, max_idx, chunk_size * step_size):
                 end = min(start + chunk_size * step_size, max_idx)
                 window_starts = np.arange(start, end, step_size, dtype=np.int32)
@@ -162,64 +193,58 @@ class TSPreprocessor:
                 window_ends = window_ends[valid_windows]
                 horizon_ends = horizon_ends[valid_windows]
 
-                x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=input_size)[window_starts]
+                x_windows = np.lib.stride_tricks.sliding_window_view(
+                    series, window_shape=input_size
+                )[window_starts]
                 y_windows = np.stack([series[we:he] for we, he in zip(window_ends, horizon_ends)])
 
-                window_buffer.extend(zip(x_windows, y_windows))
+                x_dset.resize(x_dset.shape[0] + len(x_windows), axis=0)
+                y_dset.resize(y_dset.shape[0] + len(y_windows), axis=0)
+                x_dset[-len(x_windows) :] = x_windows
+                y_dset[-len(y_windows) :] = y_windows
+                window_count += len(x_windows)
+                logger.debug(
+                    f"[{unique_id}] Saved {len(x_windows)} windows to {h5_file} for {split} split"
+                )
 
                 del x_windows, y_windows
                 gc.collect()
 
-            return window_buffer
-        else:
-            h5_file = Path(cache_dir) / f"{unique_id}_{split}.h5"
-            with h5py.File(h5_file, 'a') as f:
-                x_dset = f['x'] if 'x' in f else f.create_dataset(
-                    'x', shape=(0, input_size), maxshape=(None, input_size),
-                    dtype=np.float32, compression='lzf'
-                )
-                y_dset = f['y'] if 'y' in f else f.create_dataset(
-                    'y', shape=(0, horizon), maxshape=(None, horizon),
-                    dtype=np.float32, compression='lzf'
-                )
-
-                for start in range(0, max_idx, chunk_size * step_size):
-                    end = min(start + chunk_size * step_size, max_idx)
-                    window_starts = np.arange(start, end, step_size, dtype=np.int32)
-                    window_ends = window_starts + input_size
-                    horizon_ends = window_ends + horizon
-
-                    valid_windows = horizon_ends <= series_len
-                    window_starts = window_starts[valid_windows]
-                    window_ends = window_ends[valid_windows]
-                    horizon_ends = horizon_ends[valid_windows]
-
-                    x_windows = np.lib.stride_tricks.sliding_window_view(series, window_shape=input_size)[window_starts]
-                    y_windows = np.stack([series[we:he] for we, he in zip(window_ends, horizon_ends)])
-
-                    x_dset.resize(x_dset.shape[0] + len(x_windows), axis=0)
-                    y_dset.resize(y_dset.shape[0] + len(y_windows), axis=0)
-                    x_dset[-len(x_windows):] = x_windows
-                    y_dset[-len(y_windows):] = y_windows
-
-                    del x_windows, y_windows
-                    gc.collect()
+        logger.debug(
+            f"[{unique_id}] Total {window_count} windows saved to {h5_file} for {split} split"
+        )
+        return [h5_file]
 
     @staticmethod
     @ray.remote
     def _save_buffered_windows(window_buffer, file_idx, split, cache_dir, input_size, horizon):
         if not window_buffer:
+            logger.debug(f"No windows to save for {split} split, file_idx={file_idx}")
             return file_idx
 
         h5_file = Path(cache_dir) / f"windows_{file_idx}_{split}.h5"
-        with h5py.File(h5_file, 'a') as f:
-            x_dset = f['x'] if 'x' in f else f.create_dataset(
-                'x', shape=(0, input_size), maxshape=(None, input_size),
-                dtype=np.float32, compression='lzf'
+        with h5py.File(h5_file, "a") as f:
+            x_dset = (
+                f["x"]
+                if "x" in f
+                else f.create_dataset(
+                    "x",
+                    shape=(0, input_size),
+                    maxshape=(None, input_size),
+                    dtype=np.float32,
+                    compression="lzf",
+                )
             )
-            y_dset = f['y'] if 'y' in f else f.create_dataset(
-                'y', shape=(0, horizon), maxshape=(None, horizon),
-                dtype=np.float32, compression='lzf'
+            y_dset = (
+                f["y"]
+                if "y" in f
+                else f.create_dataset(
+                    "y",
+                    shape=(0, horizon),
+                    maxshape=(None, horizon),
+                    dtype=np.float32,
+                    compression="lzf",
+                )
             )
 
             x_windows, y_windows = zip(*window_buffer)
@@ -228,8 +253,9 @@ class TSPreprocessor:
 
             x_dset.resize(x_dset.shape[0] + len(x_windows), axis=0)
             y_dset.resize(y_dset.shape[0] + len(y_windows), axis=0)
-            x_dset[-len(x_windows):] = x_windows
-            y_dset[-len(y_windows):] = y_windows
+            x_dset[-len(x_windows) :] = x_windows
+            y_dset[-len(y_windows) :] = y_windows
+            logger.debug(f"Saved {len(x_windows)} windows to {h5_file} for {split} split")
 
         del window_buffer[:]
         gc.collect()
@@ -256,15 +282,34 @@ class TSPreprocessor:
             return windows, [], [], unique_id
 
     @staticmethod
-    @ray.remote(num_cpus=1)  # Allocate 1 CPU per task for full utilization
-    def _process_batch_optimized(unique_id_groups, window_buffers, file_indices, cache_dir, input_size, horizon, step_size, adaptive_step, downsample_factor, chunk_size, max_windows_per_file, split_type, train_split, val_split, target_col):
+    @ray.remote(num_cpus=1)
+    def _process_batch_optimized(
+        unique_id_groups,
+        window_buffers,
+        file_indices,
+        cache_dir,
+        input_size,
+        horizon,
+        step_size,
+        adaptive_step,
+        downsample_factor,
+        chunk_size,
+        max_windows_per_file,
+        split_type,
+        train_split,
+        val_split,
+        target_col,
+    ):
         results = []
         for unique_id_group in unique_id_groups:
             unique_id, group = unique_id_group
             series = group[target_col].values.astype(np.float32)
 
             if len(series) < input_size + horizon:
-                continue  # Skip short series
+                logger.debug(
+                    f"[{unique_id}] Skipping series (length={len(series)} < {input_size + horizon})"
+                )
+                continue
 
             if downsample_factor > 1:
                 series = series[::downsample_factor]
@@ -280,47 +325,47 @@ class TSPreprocessor:
                 val_end = train_end + int(num_windows * val_split)
 
                 result = []
-                if window_buffers is not None:
-                    for split, start, end in [
-                        ("train", 0, train_end * step_size),
-                        ("val", train_end * step_size, val_end * step_size),
-                        ("test", val_end * step_size, series_len)
-                    ]:
-                        buffer = TSPreprocessor._generate_windows_optimized(
-                            series[start:end], unique_id, split, window_buffers.get(split),
-                            chunk_size, input_size, horizon, step_size, adaptive_step, cache_dir
-                        )
-                        if buffer:
-                            window_buffers[split] = buffer
+                for split, start, end in [
+                    ("train", 0, train_end * step_size),
+                    ("val", train_end * step_size, val_end * step_size),
+                    ("test", val_end * step_size, series_len),
+                ]:
+                    h5_files = TSPreprocessor._generate_windows_optimized(
+                        series[start:end],
+                        unique_id,
+                        split,
+                        None,
+                        chunk_size,
+                        input_size,
+                        horizon,
+                        step_size,
+                        adaptive_step,
+                        cache_dir,
+                    )
+                    if h5_files:
+                        result.append((h5_files[0], unique_id, split))
+                    else:
                         result.append((None, unique_id, split))
-                    results.append((result, window_buffers, file_indices))
-                else:
-                    for split, start, end in [
-                        ("train", 0, train_end * step_size),
-                        ("val", train_end * step_size, val_end * step_size),
-                        ("test", val_end * step_size, series_len)
-                    ]:
-                        TSPreprocessor._generate_windows_optimized(
-                            series[start:end], unique_id, split, None,
-                            chunk_size, input_size, horizon, step_size, adaptive_step, cache_dir
-                        )
-                        result.append((Path(cache_dir) / f"{unique_id}_{split}.h5", unique_id, split))
-                    results.append((result, window_buffers, file_indices))
+                results.append((result, window_buffers, file_indices))
             else:
-                if window_buffers is not None:
-                    buffer = TSPreprocessor._generate_windows_optimized(
-                        series, unique_id, "all", window_buffers.get("all"),
-                        chunk_size, input_size, horizon, step_size, adaptive_step, cache_dir
-                    )
-                    if buffer:
-                        window_buffers["all"] = buffer
-                    results.append(([(None, unique_id, "all")], window_buffers, file_indices))
+                h5_files = TSPreprocessor._generate_windows_optimized(
+                    series,
+                    unique_id,
+                    "all",
+                    None,
+                    chunk_size,
+                    input_size,
+                    horizon,
+                    step_size,
+                    adaptive_step,
+                    cache_dir,
+                )
+                result = []
+                if h5_files:
+                    result.append((h5_files[0], unique_id, "all"))
                 else:
-                    TSPreprocessor._generate_windows_optimized(
-                        series, unique_id, "all", None,
-                        chunk_size, input_size, horizon, step_size, adaptive_step, cache_dir
-                    )
-                    results.append(([(Path(cache_dir) / f"{unique_id}_all.h5", unique_id, "all")], window_buffers, file_indices))
+                    result.append((None, unique_id, "all"))
+                results.append((result, window_buffers, file_indices))
         return results
 
     def _process_data(self):
@@ -334,11 +379,38 @@ class TSPreprocessor:
             return data["train_windows"], data["val_windows"], data["test_windows"]
 
         grouped = list(self.df.groupby("unique_id"))
+        logger.info(f"Found {len(grouped)} unique IDs")
+
+        # Pre-filter series that are too short
+        valid_grouped = []
+        lengths = []
+        for unique_id, group in grouped:
+            series_len = len(group[self.target_col])
+            lengths.append(series_len)
+            if series_len >= self.input_size + self.horizon:
+                valid_grouped.append((unique_id, group))
+            else:
+                logger.debug(
+                    f"[{unique_id}] Excluded: series length {series_len} < {self.input_size + self.horizon}"
+                )
+        logger.info(f"After filtering, {len(valid_grouped)} valid series remain")
+        if lengths:
+            lengths = np.array(lengths)
+            logger.info(
+                f"Series length stats: min={lengths.min()}, max={lengths.max()}, mean={lengths.mean():.2f}, "
+                f"median={np.median(lengths):.2f}, too_short={np.sum(lengths < self.input_size + self.horizon)}"
+            )
+
+        if not valid_grouped:
+            logger.error("No series are long enough to generate windows.")
+            raise ValueError("No valid series found for window generation.")
+
         train_windows, val_windows, test_windows = [], [], []
+        train_ids, val_ids, test_ids = [], [], []
 
         if self.split_type == "vertical":
             logger.info("Applying vertical split")
-            unique_ids = list(self.df["unique_id"].unique())
+            unique_ids = [unique_id for unique_id, _ in valid_grouped]
             np.random.shuffle(unique_ids)
             total_series = len(unique_ids)
             train_end = int(total_series * self.train_split)
@@ -347,33 +419,50 @@ class TSPreprocessor:
             train_ids = unique_ids[:train_end]
             val_ids = unique_ids[train_end:val_end]
             test_ids = unique_ids[val_end:]
+            logger.info(
+                f"Train IDs: {len(train_ids)}, Val IDs: {len(val_ids)}, Test IDs: {len(test_ids)}"
+            )
 
         if self.large_dataset:
             window_buffers = {"train": [], "val": [], "test": [], "all": []}
             file_indices = {"train": 0, "val": 0, "test": 0, "all": 0}
 
-            # Batch unique IDs to reduce task overhead
-            batches = [grouped[i:i + self.batch_size] for i in range(0, len(grouped), self.batch_size)]
+            # Batch unique IDs
+            batches = [
+                valid_grouped[i : i + self.batch_size]
+                for i in range(0, len(valid_grouped), self.batch_size)
+            ]
+            logger.debug(f"Created {len(batches)} batches")
 
-            # Submit Ray tasks for processing batches
+            # Submit Ray tasks
             futures = [
                 TSPreprocessor._process_batch_optimized.remote(
-                    batch, window_buffers, file_indices, self.cache_dir,
-                    self.input_size, self.horizon, self.step_size,
-                    self.adaptive_step, self.downsample_factor,
-                    self.chunk_size, self.max_windows_per_file,
-                    self.split_type, self.train_split, self.val_split,
-                    self.target_col
+                    batch,
+                    window_buffers.copy(),
+                    file_indices.copy(),
+                    self.cache_dir,
+                    self.input_size,
+                    self.horizon,
+                    self.step_size,
+                    self.adaptive_step,
+                    self.downsample_factor,
+                    self.chunk_size,
+                    self.max_windows_per_file,
+                    self.split_type,
+                    self.train_split,
+                    self.val_split,
+                    self.target_col,
                 )
                 for batch in batches
             ]
+            logger.debug(f"Submitted {len(futures)} Ray tasks")
 
-            # Collect results with tqdm progress bar
+            # Collect results
             pbar = tqdm(total=len(futures), desc="Processing batches", dynamic_ncols=True)
             results = []
             while futures:
                 done, futures = ray.wait(futures, num_returns=min(len(futures), 1))
-                batch_results = ray.get(done)[0]  # Unpack batch results
+                batch_results = ray.get(done)[0]
                 results.extend(batch_results)
                 pbar.update(len(done))
             pbar.close()
@@ -386,16 +475,25 @@ class TSPreprocessor:
                     while buffer:
                         futures.append(
                             TSPreprocessor._save_buffered_windows.remote(
-                                buffer[:self.max_windows_per_file], file_idx, split,
-                                self.cache_dir, self.input_size, self.horizon
+                                buffer[: self.max_windows_per_file],
+                                file_idx,
+                                split,
+                                self.cache_dir,
+                                self.input_size,
+                                self.horizon,
                             )
                         )
-                        train_windows.append((self.cache_dir / f"windows_{file_idx}_{split}.h5", None))
-                        buffer = buffer[self.max_windows_per_file:]
+                        h5_file = self.cache_dir / f"windows_{file_idx}_{split}.h5"
+                        if split == "train" or (self.split_type == "vertical" and split == "all"):
+                            train_windows.append((h5_file, None))
+                        elif split == "val":
+                            val_windows.append((h5_file, None))
+                        elif split == "test":
+                            test_windows.append((h5_file, None))
+                        buffer = buffer[self.max_windows_per_file :]
                         file_idx += 1
                     file_indices[split] = file_idx
 
-                # Save windows with tqdm progress bar
                 pbar = tqdm(total=len(futures), desc="Saving windows", dynamic_ncols=True)
                 while futures:
                     done, futures = ray.wait(futures, num_returns=min(len(futures), 1))
@@ -421,13 +519,15 @@ class TSPreprocessor:
                                 val_windows.append((h5_file, unique_id))
                             elif unique_id in test_ids:
                                 test_windows.append((h5_file, unique_id))
+
         else:
             from concurrent.futures import ProcessPoolExecutor
+
             with ProcessPoolExecutor(max_workers=self.num_workers) as executor:
                 results = list(
                     tqdm(
-                        executor.map(self._process_one_series_in_memory, grouped),
-                        total=len(grouped),
+                        executor.map(self._process_one_series_in_memory, valid_grouped),
+                        total=len(valid_grouped),
                         desc="Processing series",
                     )
                 )
@@ -441,13 +541,23 @@ class TSPreprocessor:
                     if unique_id in train_ids:
                         train_windows.extend(train_w)
                     elif unique_id in val_ids:
-                        val_windows.extend(train_w)
+                        val_windows.extend(val_w)
                     elif unique_id in test_ids:
-                        test_windows.extend(train_w)
+                        test_windows.extend(test_w)
 
         train_windows = np.array(train_windows, dtype=object)
         val_windows = np.array(val_windows, dtype=object)
         test_windows = np.array(test_windows, dtype=object)
+
+        logger.info(
+            f"Train windows: {len(train_windows)}, Val windows: {len(val_windows)}, Test windows: {len(test_windows)}"
+        )
+
+        if len(train_windows) == 0:
+            logger.error(
+                "No training windows generated after processing. Check split_type, train_split, or data."
+            )
+            raise ValueError("Training dataset is empty. Adjust parameters or verify data.")
 
         if self.use_cache:
             logger.info("Saving preprocessed windows metadata to cache")
@@ -461,11 +571,7 @@ class TSPreprocessor:
                     f,
                 )
 
-        logger.info(
-            f"Train windows: {len(train_windows)}, Val windows: {len(val_windows)}, Test windows: {len(test_windows)}"
-        )
         return train_windows, val_windows, test_windows
-
 
 
 class UnivariateTSDataset(Dataset):
@@ -490,9 +596,8 @@ class UnivariateTSDataset(Dataset):
         if self.large_dataset:
             total_len = 0
             for h5_file, _ in self.windows:
-                if h5_file not in self.h5_files:
-                    self.h5_files[h5_file] = h5py.File(h5_file, 'r')
-                total_len += self.h5_files[h5_file]['x'].shape[0]
+                with h5py.File(h5_file, "r") as f:
+                    total_len += f["x"].shape[0]
             return total_len
         return len(self.x)
 
@@ -500,17 +605,16 @@ class UnivariateTSDataset(Dataset):
         if self.large_dataset:
             current_idx = 0
             for h5_file, _ in self.windows:
-                if h5_file not in self.h5_files:
-                    self.h5_files[h5_file] = h5py.File(h5_file, 'r')
-                num_windows = self.h5_files[h5_file]['x'].shape[0]
-                if current_idx + num_windows > idx:
-                    local_idx = idx - current_idx
-                    x = self.h5_files[h5_file]['x'][local_idx]
-                    y = self.h5_files[h5_file]['y'][local_idx]
-                    if self.device:
-                        return torch.from_numpy(x).to(self.device), torch.from_numpy(y).to(self.device)
-                    return torch.from_numpy(x), torch.from_numpy(y)
-                current_idx += num_windows
+                with h5py.File(h5_file, "r") as f:  # Context manager closes file
+                    num_windows = f["x"].shape[0]
+                    if current_idx + num_windows > idx:
+                        local_idx = idx - current_idx
+                        x = f["x"][local_idx]
+                        y = f["y"][local_idx]
+                        if self.device:
+                            return torch.from_numpy(x).to(self.device), torch.from_numpy(y).to(self.device)
+                        return torch.from_numpy(x), torch.from_numpy(y)
+                    current_idx += num_windows
             raise IndexError("Index out of range")
         else:
             if self.device:
@@ -554,24 +658,24 @@ class UnivariateTSDataModule(pl.LightningDataModule):
             self.train_dataset = UnivariateTSDataset(
                 self.preprocessor.train_windows,
                 device=self.device if self.gpu_preload else None,
-                large_dataset=self.preprocessor.large_dataset
+                large_dataset=self.preprocessor.large_dataset,
             )
             self.val_dataset = UnivariateTSDataset(
                 self.preprocessor.val_windows,
                 device=self.device if self.gpu_preload else None,
-                large_dataset=self.preprocessor.large_dataset
+                large_dataset=self.preprocessor.large_dataset,
             )
         if stage in ("validate", None):
             self.val_dataset = UnivariateTSDataset(
                 self.preprocessor.val_windows,
                 device=self.device if self.gpu_preload else None,
-                large_dataset=self.preprocessor.large_dataset
+                large_dataset=self.preprocessor.large_dataset,
             )
         if stage in ("test", None):
             self.test_dataset = UnivariateTSDataset(
                 self.preprocessor.test_windows,
                 device=self.device if self.gpu_preload else None,
-                large_dataset=self.preprocessor.large_dataset
+                large_dataset=self.preprocessor.large_dataset,
             )
 
     def _create_dataloader(self, dataset, shuffle=False):
