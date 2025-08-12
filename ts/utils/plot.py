@@ -7,7 +7,6 @@ __all__ = ['plot_decomposition']
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-
 # %% ../../nbs/utils/utils.plot.ipynb 2
 def plot_decomposition(signal, trend, seasonal, noise, title="Time Series Decomposition"):
     """
@@ -24,23 +23,21 @@ def plot_decomposition(signal, trend, seasonal, noise, title="Time Series Decomp
     x = list(range(n))
 
     fig = make_subplots(
-        rows=4, cols=1,
+        rows=4,
+        cols=1,
         shared_xaxes=True,
         subplot_titles=("Original Signal", "Trend", "Seasonal", "Noise"),
-        vertical_spacing=0.05
+        vertical_spacing=0.05,
     )
 
-    fig.add_trace(go.Scatter(x=x, y=signal, name="Signal", line=dict(color='blue')), row=1, col=1)
-    fig.add_trace(go.Scatter(x=x, y=trend, name="Trend", line=dict(color='orange')), row=2, col=1)
-    fig.add_trace(go.Scatter(x=x, y=seasonal, name="Seasonal", line=dict(color='green')), row=3, col=1)
-    fig.add_trace(go.Scatter(x=x, y=noise, name="Noise", line=dict(color='red')), row=4, col=1)
-
-    fig.update_layout(
-        height=800,
-        title_text=title,
-        showlegend=False,
-        template='plotly_white'
+    fig.add_trace(go.Scatter(x=x, y=signal, name="Signal", line=dict(color="blue")), row=1, col=1)
+    fig.add_trace(go.Scatter(x=x, y=trend, name="Trend", line=dict(color="orange")), row=2, col=1)
+    fig.add_trace(
+        go.Scatter(x=x, y=seasonal, name="Seasonal", line=dict(color="green")), row=3, col=1
     )
+    fig.add_trace(go.Scatter(x=x, y=noise, name="Noise", line=dict(color="red")), row=4, col=1)
+
+    fig.update_layout(height=800, title_text=title, showlegend=False, template="plotly_white")
 
     fig.update_yaxes(title_text="Value", row=1, col=1)
     fig.update_yaxes(title_text="Value", row=2, col=1)
