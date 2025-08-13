@@ -4,6 +4,7 @@
 __all__ = ['FFTSinusoidalForecaster', 'MovingAvgSinusoidalDecompose']
 
 # %% ../../nbs/models/model.fft.ipynb 15
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -11,7 +12,6 @@ import torch
 import torch.nn as nn
 from plotly.subplots import make_subplots
 from scipy.fftpack import fft
-import matplotlib.pyplot as plt
 
 # %% ../../nbs/models/model.fft.ipynb 16
 class FFTSinusoidalForecaster:
@@ -40,7 +40,7 @@ class FFTSinusoidalForecaster:
         K = (normalized_energy < self.energy_threshold).sum(axis=-1) + 1
         return K.max().item()  # take max k across batch/features
 
-    def _generate_component_sum(self, time_steps, indices,period=0):
+    def _generate_component_sum(self, time_steps, indices, period=0):
         reconstructed = np.zeros((self.batch, self.features, len(time_steps)), dtype=float)
         self.top_k_components = []
 
@@ -73,7 +73,7 @@ class FFTSinusoidalForecaster:
         else:
             # Full seasonal: in-sample + forecast
             t_full = np.arange(0, self.N + period)
-            seasonal_full = self._generate_component_sum(t_full, unique_indices,period)
+            seasonal_full = self._generate_component_sum(t_full, unique_indices, period)
             return torch.tensor(seasonal_full, dtype=torch.float32, device=self.device)
 
 
@@ -107,12 +107,15 @@ class MovingAvgSinusoidalDecompose(nn.Module):
             detrended, energy_threshold=self.energy_threshold, device=x.device
         )
         seasonal = seasonal_model.forecast(period=period)
+        print(seasonal.shape,period)
         if period > 0:
             seasonal_forecast = seasonal[..., -period:]
+            
             seasonal = seasonal[..., :-period]
         else:
             seasonal_forecast = None
 
         # Noise
         noise = detrended - seasonal
+        print(trend.shape,x.shape)
         return seasonal_forecast, (trend, seasonal, noise)
